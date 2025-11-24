@@ -177,21 +177,26 @@ fixable_data <- replace_errors(dane, rules)
 cf <- confront (fixable_data, rules)
 barplot(cf, main="fixable_data")
 ```
+
 ```{r}
 dane_imp <- hotdeck(fixable_data)
 ```
+
 ```{r}
 cf <- confront (dane_imp, rules)
 barplot(cf, main="dane_imp")
 ```
+
 ```{r}
 fixable_data2 <- replace_errors(dane_imp, rules)
 cf <- confront (fixable_data2, rules)
 barplot(cf, main="fixable_data2")
 ```
+
 ```{r}
 sum(duplicated(dane_imp))
 ```
+
 ```{r - wizualicja danych}
 ggplot(dane, aes(x=credit_score, fill=as.factor(loan_status))) +
   geom_histogram(position="dodge", bins=30, alpha=0.7) +
