@@ -27,6 +27,8 @@ library(dplyr)
 library(naniar)
 library(finalfit)
 library(VIM)
+library(validate)
+library(errorlocate)
 
 dane <- read_csv("kredyty_new.csv")
 ```
@@ -186,6 +188,8 @@ fixable_data2 <- replace_errors(dane_imp, rules)
 cf <- confront (fixable_data2, rules)
 barplot(cf, main="fixable_data2")
 ```
-
+```{r}
+sum(duplicated(dane_imp))
+```
 # ????
 # !!!!!
