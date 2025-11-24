@@ -29,6 +29,7 @@ library(finalfit)
 library(VIM)
 library(validate)
 library(errorlocate)
+library(ggplot2)
 
 dane <- read_csv("kredyty_new.csv")
 ```
@@ -191,5 +192,16 @@ barplot(cf, main="fixable_data2")
 ```{r}
 sum(duplicated(dane_imp))
 ```
+```{r - wizualicja danych}
+ggplot(dane, aes(x=credit_score, fill=as.factor(loan_status))) +
+  geom_histogram(position="dodge", bins=30, alpha=0.7) +
+  labs(title="Rozkład credit_score w zależności od loan_status",
+       x="credit_score",
+       y="Liczba obserwacji",
+       fill="loan_status") +
+  theme_minimal()
+#plotly - do interaktywności na html
+```
+
 # ????
 # !!!!!
