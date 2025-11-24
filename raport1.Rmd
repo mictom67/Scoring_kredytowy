@@ -206,6 +206,19 @@ ggplot(dane, aes(x=credit_score, fill=as.factor(loan_status))) +
        fill="loan_status") +
   theme_minimal()
 #plotly - do interaktywności na html
+
+ggplot(dane, aes(x = factor(loan_status), y = credit_score,
+                 fill = factor(loan_status))) +
+  geom_boxplot(na.rm = TRUE, outlier.alpha = 0.2) +
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "lightgreen"),
+                    name = "loan_status") +
+  labs(title = "Porównanie person_income w zależności od loan_status",
+       x = "loan_status", y = "credit_score") +
+  theme_minimal()
+
+ggplot(dane, aes(x = factor(loan_status), y = credit_score)) +
+  geom_boxplot(fill = "lightgreen", na.rm = TRUE) +
+  theme_minimal()
 ```
 
 # ????
