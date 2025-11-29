@@ -374,7 +374,6 @@ plot_distributions <- function(df, var = "loan_amnt", by = "loan_status", log_sc
 plot_distributions(dane_clean, var = "loan_amnt", by = "loan_status")
 ```
 
-
 ```{r wykresy-ECDF-Paweł, echo=FALSE}
 plot_ecdf <- function(df, var = "loan_amnt", log_scale = TRUE) {
   df2 <- df %>% filter(!is.na(.data[[var]]))
@@ -481,4 +480,5 @@ plot_violin(dane_clean, numeric_var = "person_income", cat_var = "loan_status")
 ```
 
 # ????
+
 # !!!!!
