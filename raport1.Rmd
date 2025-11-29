@@ -49,9 +49,13 @@ library(patchwork) #konieczne do wykresów
 #install.packages("Hmisc") #<- do pobrania dla wszystkich, jak pobierzecie to usuńcie!!!!
 library(Hmisc) #konieczne do wykresów
 
-
-dane <- read_csv("kredyty_new.csv")
 ```
+
+```{r}
+dane <- read_csv("kredyty_new.csv") %>% 
+  mutate(loan_status = abs(loan_status - 1))
+```
+
 
 # Wstęp
 
@@ -77,7 +81,7 @@ Dane te mogą być wykorzystywane w różnych celach analitycznych i badawczych,
 -   Jakie są główne różnice w profilu (np. dochód, wiek, stan cywilny) między klientami, którzy otrzymali pozytywną ocenę, a tymi, którzy otrzymali negatywną?
 -   Czy wysokość dochodu jest najważniejszym czynnikiem decydującym o przyznaniu kredytu?
 -   W jakim stopniu długość posiadanej historii kredytowej wpływa na ostateczny scoring?
--   Czy cel zaciągnięcia kredytu (np. hipoteka vs. kredyt gotówkowy) ma istotny wpływ na ocenę zdolności kredytowej? -Która pojedyncza cecha klienta (np. wiek, dochód, czy status zatrudnienia) jest najlepszym predyktorem (wskaźnikiem) niespłacenia pożyczki?
+-  Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
 
 ## Opis zmiennych
 
@@ -478,6 +482,76 @@ plot_violin <- function(df, numeric_var = "person_income", cat_var = "loan_statu
 plot_violin(dane_clean, numeric_var = "person_income", cat_var = "loan_status")
 #W większości przypadków dochody osób biorących pożyczki są relatywnie niskie (większość skupiona w dolnym zakresie), ale jest też mała grupa osób z bardzo wysokimi dochodami — wykres pokazuje tę nierównomierność i kilka ekstremalnych wartości.
 ```
+
+Jakie są główne różnice w profilu (np. dochód, wiek, stan cywilny) między klientami, którzy otrzymali pozytywną ocenę, a tymi, którzy otrzymali negatywną?
+
+```{r}
+for (i in 1:(ncol(dane_clean)-1)) {
+  dane_col = dane_clean[[i]]
+  udzielono = dane_clean$loan_status == 1
+  nie_udzielono = dane_clean$loan_status == 0
+  if (class(dane_col) == "numeric") {
+    print(paste0(
+      colnames(dane_clean)[i],
+      " - udzielono: ", round(mean(dane_col[udzielono], na.rm = TRUE), 3)
+      , " - nie udzielono: ", round(mean(dane_col[nie_udzielono], na.rm = TRUE), 3)
+    ))
+    
+    
+  } else {
+    print(prop.table(table(dane_col, dane_clean$loan_status), margin=1))
+  }
+}
+```
+
+# Pyt.2 Czynniki wpływające na udzielnie lub nieudzielenie pożyczki:
+ - person_income - osoby którym udzielono pożyczki mają średnio wyższe dochody
+ - rodzaj zamieszkania - osoby posiadające własne mieszkanie lub kredyt hipoteczny częściej dostają pożyczki niż osoby wynajmujące mieszkanie lub pozostałe
+ - cel pożyczki - największy odsetek udzielonych pożyczek jest w kategorii venture oraz education
+ - pożyczki udzielone mają średnio niższą stopę procentową
+ - jaki odsetek dochodu stanowi pożyczka - wśród udzielonych pożyczek jest to średnio mniejsze wartość
+Pozostałe zmienne nie mają wpływu.
+
+# Pyt. 3 Czy wysokość dochodu jest najważniejszym czynnikiem decydującym o przyznaniu kredytu?
+Do oszacowania wpływu zmiennych zastosujemy regresję logistyczną
+```{r}
+options(scipen=20)
+model_logit = glm(
+  data = dane_clean
+  , formula = as.factor(loan_status) ~ .
+  , family = binomial
+)
+
+# summary(model_logit)
+model_logit_summary = broom::tidy(model_logit)
+knitr::kable(model_logit_summary)
+```
+
+Wysokość dochodu jest bardzo ważnym czynnikiem (p-value bardzo niskie), ale ważniejszymi czynnikami są wysokość pożyczki, rodzaj miejsca zamieszkania, cel pożyczki, scoring kredytowy, jaką część dochodu stanowi pożyczka.
+
+# Pyt. 5 Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
+
+```{r}
+model_logit_2 = glm(
+  data = dane_clean
+  , formula = as.factor(loan_status) ~ person_age
+  , family = binomial
+)
+
+summary(model_logit_2)
+```
+```{r}
+ggplot(dane_clean, aes(x = person_age, y = loan_status)) +
+  geom_point(position = position_jitter(height = 0.02), alpha = 0.4) +
+  geom_smooth(
+    method = "glm",
+    method.args = list(family = "binomial"),
+    se = TRUE
+  )
+```
+
+W modelu ze wszystkimi zmiennymi (*model_logit*), wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania kredytu.
+Natomiast po wyizolowaniu zmiennej wiek (*model_logit_2* oraz powyższy wykres), wraz ze wzrostem wieku rośnie prawdopodobieństwo otrzymania kredytu.
 
 # ????
 
