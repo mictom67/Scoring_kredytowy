@@ -15,3 +15,8 @@ colorspace
 VIM
 validate
 errorlocate
+janitor
+scales
+ggcorrplot
+patchwork
+Hmisc

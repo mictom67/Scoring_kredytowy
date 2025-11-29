@@ -223,30 +223,6 @@ barplot(cf2)
 sum(duplicated(dane_imp))
 ```
 
-```{r - wizualicja danych}
-ggplot(dane, aes(x=credit_score, fill=as.factor(loan_status))) +
-  geom_histogram(position="dodge", bins=30, alpha=0.7) +
-  labs(title="Rozkład credit_score w zależności od loan_status",
-       x="credit_score",
-       y="Liczba obserwacji",
-       fill="loan_status") +
-  theme_minimal()
-#plotly - do interaktywności na html
-
-ggplot(dane, aes(x = factor(loan_status), y = credit_score,
-                 fill = factor(loan_status))) +
-  geom_boxplot(na.rm = TRUE, outlier.alpha = 0.2) +
-  scale_fill_manual(values = c("0" = "lightblue", "1" = "lightgreen"),
-                    name = "loan_status") +
-  labs(title = "Porównanie person_income w zależności od loan_status",
-       x = "loan_status", y = "credit_score") +
-  theme_minimal()
-
-ggplot(dane, aes(x = factor(loan_status), y = credit_score)) +
-  geom_boxplot(fill = "lightgreen", na.rm = TRUE) +
-  theme_minimal()
-```
-
 ```{r info co do czyszczenia, eval=FALSE, include=FALSE}
 
 #ten fragment to funkcja „czyszcząca” (preprocessing) — przygotowuje surowy dataframe do dalszej analizy i rysunków. Bez takiego kroku często dostaniesz błędy (np. brakujące funkcje/typy, warningi ggplot o utraconych estetykach, dziwne skale, outliery psujące wykresy) lub otrzymasz mylące wykresy (np. liczba 0/1 traktowana jako liczba, a nie kategoria).
