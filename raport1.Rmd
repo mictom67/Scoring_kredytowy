@@ -483,7 +483,7 @@ plot_violin(dane_clean, numeric_var = "person_income", cat_var = "loan_status")
 #W większości przypadków dochody osób biorących pożyczki są relatywnie niskie (większość skupiona w dolnym zakresie), ale jest też mała grupa osób z bardzo wysokimi dochodami — wykres pokazuje tę nierównomierność i kilka ekstremalnych wartości.
 ```
 
-Jakie są główne różnice w profilu (np. dochód, wiek, stan cywilny) między klientami, którzy otrzymali pozytywną ocenę, a tymi, którzy otrzymali negatywną?
+#Pytanie 2Jakie są główne różnice w profilu (np. dochód, wiek, stan cywilny) między klientami, którzy otrzymali pozytywną ocenę, a tymi, którzy otrzymali negatywną?
 
 ```{r}
 for (i in 1:(ncol(dane_clean)-1)) {
@@ -504,7 +504,7 @@ for (i in 1:(ncol(dane_clean)-1)) {
 }
 ```
 
-# Pyt.2 Czynniki wpływające na udzielnie lub nieudzielenie pożyczki:
+Czynniki wpływające na udzielnie lub nieudzielenie pożyczki:
  - person_income - osoby którym udzielono pożyczki mają średnio wyższe dochody
  - rodzaj zamieszkania - osoby posiadające własne mieszkanie lub kredyt hipoteczny częściej dostają pożyczki niż osoby wynajmujące mieszkanie lub pozostałe
  - cel pożyczki - największy odsetek udzielonych pożyczek jest w kategorii venture oraz education
@@ -512,7 +512,7 @@ for (i in 1:(ncol(dane_clean)-1)) {
  - jaki odsetek dochodu stanowi pożyczka - wśród udzielonych pożyczek jest to średnio mniejsze wartość
 Pozostałe zmienne nie mają wpływu.
 
-# Pyt. 3 Czy wysokość dochodu jest najważniejszym czynnikiem decydującym o przyznaniu kredytu?
+# Pytanie 3 Czy wysokość dochodu jest najważniejszym czynnikiem decydującym o przyznaniu kredytu?
 Do oszacowania wpływu zmiennych zastosujemy regresję logistyczną
 ```{r}
 options(scipen=20)
@@ -529,7 +529,7 @@ knitr::kable(model_logit_summary)
 
 Wysokość dochodu jest bardzo ważnym czynnikiem (p-value bardzo niskie), ale ważniejszymi czynnikami są wysokość pożyczki, rodzaj miejsca zamieszkania, cel pożyczki, scoring kredytowy, jaką część dochodu stanowi pożyczka.
 
-# Pyt. 5 Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
+# Pytanie 5 Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
 
 ```{r}
 model_logit_2 = glm(
@@ -551,7 +551,7 @@ ggplot(dane_clean, aes(x = person_age, y = loan_status)) +
 ```
 
 W modelu ze wszystkimi zmiennymi (*model_logit*), wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania kredytu.
-Natomiast po wyizolowaniu zmiennej wiek (*model_logit_2* oraz powyższy wykres), wraz ze wzrostem wieku rośnie prawdopodobieństwo otrzymania kredytu.
+Natomiast po wyizolowaniu zmiennej wiek (*model_logit_2*, powyższy wykres), wraz ze wzrostem wieku rośnie prawdopodobieństwo otrzymania kredytu.
 
 # ????
 
