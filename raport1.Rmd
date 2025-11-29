@@ -271,7 +271,7 @@ ggplot(dane, aes(x = factor(loan_status), y = credit_score)) +
 #Standaryzacja kategorii: ułatwia porównania i estetykę legend.
 ```
 
-```{r wykresy-czyszczenie-Paweł}
+```{r wykresy-czyszczenie-Paweł, include=FALSE}
 clean_basic <- function(df) {
   df <- df %>%
     clean_names() %>%
@@ -310,13 +310,12 @@ clean_basic <- function(df) {
 }
 ```
 
-```{r wywołanie_czyszczenia}
+```{r wywołanie_czyszczenia, include=FALSE}
 dane_clean <- clean_basic(dane)
 glimpse(dane_clean)
 ```
 
 ```{r wykresy-sprawdzanie NA-Paweł, include=FALSE}
-# ---------- Missing data overview ----------
 missing_overview <- function(df) {
   list(
     miss_var = gg_miss_var(df) + ggtitle("Liczba braków na zmienną"),
@@ -377,7 +376,6 @@ plot_distributions(dane_clean, var = "loan_amnt", by = "loan_status")
 
 
 ```{r wykresy-ECDF-Paweł, echo=FALSE}
-# ---------- ECDF ----------
 plot_ecdf <- function(df, var = "loan_amnt", log_scale = TRUE) {
   df2 <- df %>% filter(!is.na(.data[[var]]))
   ECDF <- ggplot(df2, aes_string(x = var)) +
