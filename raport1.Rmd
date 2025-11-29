@@ -477,6 +477,7 @@ plot_violin <- function(df, numeric_var = "person_income", cat_var = "loan_statu
 
 ```{r wywołanie_violin, echo=FALSE}
 plot_violin(dane_clean, numeric_var = "person_income", cat_var = "loan_status")
+#W większości przypadków dochody osób biorących pożyczki są relatywnie niskie (większość skupiona w dolnym zakresie), ale jest też mała grupa osób z bardzo wysokimi dochodami — wykres pokazuje tę nierównomierność i kilka ekstremalnych wartości.
 ```
 
 # ????
