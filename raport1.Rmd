@@ -3,18 +3,15 @@ title: "Raport z analizy danych"
 date: "`r Sys.Date()`"
 authors: Michał Tomaszewicz, Paweł Tomaszewski, Kacper Żmudowski, Agata Downar
 output:
-  rmdformats::html_clean:
-    highlight: kate
-    theme: "lumen"
-    self_contained: true
-    number_sections: true
-    fig_width: 7
-    fig_height: 5
-    fig_caption: true
-    df_print: paged
-    toc: true           
-    toc_depth: 4     
-    toc_float: true
+  html_document:
+    toc: true          # włącza spis treści
+    toc_float: true    # spis treści „pływa” z prawej strony
+    number_sections: true  # numeruje nagłówki (1, 1.1, 2, ...)
+    df_print: paged    # ładne tabele
+    theme: cosmo       # opcjonalnie: ładniejszy motyw
+    highlight: tango   # podświetlanie kodu
+lang: pl
+always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
@@ -51,11 +48,10 @@ library(Hmisc) #konieczne do wykresów
 
 ```
 
-```{r}
+```{r include=FALSE}
 dane <- read_csv("kredyty_new.csv") %>% 
   mutate(loan_status = abs(loan_status - 1))
 ```
-
 
 # Wstęp
 
@@ -81,14 +77,14 @@ Dane te mogą być wykorzystywane w różnych celach analitycznych i badawczych,
 -   Jakie są główne różnice w profilu (np. dochód, wiek, stan cywilny) między klientami, którzy otrzymali pozytywną ocenę, a tymi, którzy otrzymali negatywną?
 -   Czy wysokość dochodu jest najważniejszym czynnikiem decydującym o przyznaniu kredytu?
 -   W jakim stopniu długość posiadanej historii kredytowej wpływa na ostateczny scoring?
--  Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
+-   Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
 
 ## Opis zmiennych
 
 Zbiór danych zawiera 14 zmiennych opisujących osoby ubiegające się o pożyczkę oraz cechy samej pożyczki. Poniższa tabela przedstawia zestawienie wszystkich kolumn wraz z krótkim opisem:
 
 | Nazwa zmiennej | Opis | Typ danych |
-|---------------------|---------------------------------|------------------|
+|------------------------|------------------------|------------------------|
 | person_age | Wiek osoby | Liczba zmiennoprzecinkowa |
 | person_gender | Płeć osoby | Kategoryczna |
 | person_education | Najwyższy poziom wykształcenia | Kategoryczna |
@@ -173,35 +169,70 @@ person_age <= 100
 , cb_person_cred_hist_length <= person_age - 18)
 ```
 
-```{r}
+# Oczyszczenie danych z braków i wartości nielogicznych
+## Sprawdzenie poprawności danych przed oczyszczeniem
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE, results='asis'}
 cf <- confront (dane, rules)
 barplot(cf, main="dane")
 #as.data.frame(cf) %>% head()
 ```
 
-```{r wykresy braków danych, echo=FALSE, paged.print=TRUE}
-gg_miss_upset(dane)        # diagram zestawu braków danych
-gg_miss_var(dane)          # liczba NA w zmiennych
-vis_miss(dane)             # SZACHOWNICA braków danych
-missing_pattern(dane)      # inna szachownica braków danych
+
+## Wizualizacja braków danych
+
+### Liczba braków na zmienną
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+gg_miss_var(dane)
 ```
 
-```{r}
+### Diagram zestawu braków danych
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+gg_miss_upset(dane)
+```
+
+
+### Wizualizacja braków danych w formie mapy cieplnej
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+vis_miss(dane)
+```
+
+
+
+### Wzorzec braków danych
+
+```{r szachownica, echo=FALSE, fig.height=20, fig.width=20, message=FALSE, warning=FALSE}
+missing_pattern(dane) + theme(axis.text.x = element_text(angle = 45, vjust = 0.1,
+                                                         hjust = 1, size = 16))
+invisible(NULL)
+```
+## Lokalizacja błędów
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 fixable_data <- replace_errors(dane, rules)
 cf <- confront (fixable_data, rules)
 barplot(cf, main="fixable_data")
 ```
 
-```{r}
+
+
+##Imputacja brakujących i nielogicznych danych metodą hotdeck
+
+
+```{r include=FALSE}
 dane_imp <- hotdeck(fixable_data)
 ```
 
-```{r}
+```{r message=FALSE, warning=FALSE, include=FALSE}
 cf <- confront (dane_imp, rules)
 barplot(cf, main="dane_imp")
 ```
 
-```{r}
+
+## Sprawdzenie poprawności danych po imputacji
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 dane_imp <- dane_imp %>%
   mutate(
     person_emp_exp = pmin(
@@ -216,10 +247,10 @@ dane_imp <- dane_imp %>%
 
 cf2 <- confront(dane_imp, rules)
 summary(cf2)      # powinno dać fails = 0
-barplot(cf2)
+barplot(cf2) 
 ```
 
-```{r}
+```{r include=FALSE}
 sum(duplicated(dane_imp))
 ```
 
@@ -295,6 +326,8 @@ dane_clean <- clean_basic(dane)
 glimpse(dane_clean)
 ```
 
+# Analiza danych
+
 ```{r wykresy-sprawdzanie NA-Paweł, include=FALSE}
 missing_overview <- function(df) {
   list(
@@ -326,12 +359,13 @@ plot_pareto <- function(df, var = "loan_amnt", top_n = 200, unit = "") {
 }
 
 ```
-
-```{r wywołanie_pareto, echo=FALSE}
-plot_pareto(dane_clean, var = "loan_amnt", top_n = 10000, unit = "PLN")
+## Wykres Pareto dla kwoty pożyczki
+```{r wywołanie_pareto, echo=FALSE, message=FALSE, warning=FALSE}
+plot_pareto(dane_clean, var = "loan_amnt", top_n = 10000, unit = "PLN") + 
+  ggtitle("Wykres Pareto dla kwoty pożyczki (loan_amnt)")
 ```
 
-```{r wykresy-histogram/boxplot-Paweł, echo=FALSE}
+```{r wykresy-histogram/boxplot-Paweł, echo=FALSE, message=FALSE, warning=FALSE}
 plot_distributions <- function(df, var = "loan_amnt", by = "loan_status", log_scale = TRUE) {
   df2 <- df %>% filter(!is.na(.data[[var]]))
   df2 <- df2 %>% mutate(!!by := as.factor(.data[[by]]))
@@ -349,12 +383,12 @@ plot_distributions <- function(df, var = "loan_amnt", by = "loan_status", log_sc
   combined
 }
 ```
-
-```{r wywołanie_rozkład, echo=FALSE}
+## Rozkład kwoty pożyczki w zależności od statusu pożyczki
+```{r wywołanie_rozkład, echo=FALSE, message=FALSE, warning=FALSE}
 plot_distributions(dane_clean, var = "loan_amnt", by = "loan_status")
 ```
 
-```{r wykresy-ECDF-Paweł, echo=FALSE}
+```{r wykresy-ECDF-Paweł, echo=FALSE, message=FALSE, warning=FALSE}
 plot_ecdf <- function(df, var = "loan_amnt", log_scale = TRUE) {
   df2 <- df %>% filter(!is.na(.data[[var]]))
   ECDF <- ggplot(df2, aes_string(x = var)) +
@@ -365,13 +399,13 @@ plot_ecdf <- function(df, var = "loan_amnt", log_scale = TRUE) {
   ECDF
 }
 ```
-
-```{r wywołanie_ECDF, echo=FALSE}
+## Wykres funkcji dystrybuanty skumulowanej (ECDF) dla kwoty pożyczki
+```{r wywołanie_ECDF, echo=FALSE, message=FALSE, warning=FALSE}
 plot_ecdf(dane_clean, var = "loan_amnt")
 #Większość pożyczek koncentruje się poniżej 10 000 PLN (stroma część krzywej), natomiast wartości powyżej 30 000 PLN stanowią jedynie niewielki odsetek obserwacji (krzywa zbliża się do 1 dopiero na końcu).
 ```
 
-```{r wykresy_heatmapa_korelacji_Paweł, echo=FALSE, cache=FALSE}
+```{r wykresy_heatmapa_korelacji_Paweł, echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
 plot_correlation_heatmap <- function(df,
                                      numeric_vars = NULL,
                                      method = "spearman",
@@ -436,12 +470,12 @@ plot_correlation_heatmap <- function(df,
   return(p)
 }
 ```
-
-```{r wywołanie_heatmapy, echo=FALSE}
-plot_correlation_heatmap(dane_clean)
+## Mapa korelacji zmiennych numerycznych
+```{r wywołanie_heatmapy, echo=FALSE, message=FALSE, warning=FALSE}
+plot_correlation_heatmap(dane_clean) 
 ```
 
-```{r wykresy-violin-boxplot-Paweł, echo=FALSE}
+```{r wykresy-violin-boxplot-Paweł, echo=FALSE, warning=FALSE}
 plot_violin <- function(df, numeric_var = "person_income", cat_var = "loan_status", log_scale = TRUE) {
   df2 <- df %>% filter(!is.na(.data[[numeric_var]]))
   violin_boxplot <- ggplot(df2, aes_string(x = cat_var, y = numeric_var, fill = cat_var)) +
@@ -454,14 +488,16 @@ plot_violin <- function(df, numeric_var = "person_income", cat_var = "loan_statu
 }
 ```
 
-```{r wywołanie_violin, echo=FALSE}
+# Wyniki w odniesieniu do pytań badawczych
+
+```{r wywołanie_violin, echo=FALSE, message=FALSE, warning=FALSE}
 plot_violin(dane_clean, numeric_var = "person_income", cat_var = "loan_status")
 #W większości przypadków dochody osób biorących pożyczki są relatywnie niskie (większość skupiona w dolnym zakresie), ale jest też mała grupa osób z bardzo wysokimi dochodami — wykres pokazuje tę nierównomierność i kilka ekstremalnych wartości.
 ```
 
-#Pytanie 2Jakie są główne różnice w profilu (np. dochód, wiek, stan cywilny) między klientami, którzy otrzymali pozytywną ocenę, a tymi, którzy otrzymali negatywną?
+## Pytanie: Jakie są główne różnice w profilu (np. dochód, wiek, stan cywilny) między klientami, którzy otrzymali pozytywną ocenę, a tymi, którzy otrzymali negatywną?
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 for (i in 1:(ncol(dane_clean)-1)) {
   dane_col = dane_clean[[i]]
   udzielono = dane_clean$loan_status == 1
@@ -478,19 +514,39 @@ for (i in 1:(ncol(dane_clean)-1)) {
     print(prop.table(table(dane_col, dane_clean$loan_status), margin=1))
   }
 }
+
+
 ```
 
-Czynniki wpływające na udzielnie lub nieudzielenie pożyczki:
- - person_income - osoby którym udzielono pożyczki mają średnio wyższe dochody
- - rodzaj zamieszkania - osoby posiadające własne mieszkanie lub kredyt hipoteczny częściej dostają pożyczki niż osoby wynajmujące mieszkanie lub pozostałe
- - cel pożyczki - największy odsetek udzielonych pożyczek jest w kategorii venture oraz education
- - pożyczki udzielone mają średnio niższą stopę procentową
- - jaki odsetek dochodu stanowi pożyczka - wśród udzielonych pożyczek jest to średnio mniejsze wartość
-Pozostałe zmienne nie mają wpływu.
+| **Czynniki wpływające na udzielnie lub nieudzielenie pożyczki:**
 
-# Pytanie 3 Czy wysokość dochodu jest najważniejszym czynnikiem decydującym o przyznaniu kredytu?
-Do oszacowania wpływu zmiennych zastosujemy regresję logistyczną
-```{r}
+-   Dochód osobisty
+
+    -   Osoby którym udzielono pożyczki mają średnio wyższe dochody.
+
+-   Rodzaj zamieszkania
+
+    -   Osoby posiadające własne mieszkanie lub kredyt hipoteczny częściej dostają pożyczki niż osoby wynajmujące mieszkanie lub pozostałe.
+
+-   Cel pożyczki
+
+    -   Największy odsetek udzielonych pożyczek jest w kategorii venture oraz education.
+
+-   Stopa procentowa
+
+    -   Pożyczki, które zostały udzielone, mają średnio niższe oprocentowanie.
+
+-   Relacja pożyczki do dochodu
+
+-   W przypadku udzielonych pożyczek wartość pożyczki stanowi przeciętnie mniejszy odsetek dochodu klienta.
+
+    **Pozostałe analizowane zmienne nie wykazują istotnego wpływu na decyzję o udzieleniu pożyczki.**
+
+## Pytanie: Czy wysokość dochodu jest najważniejszym czynnikiem decydującym o przyznaniu kredytu?
+
+***Do oszacowania wpływu zmiennych zastosujemy regresję logistyczną***
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 options(scipen=20)
 model_logit = glm(
   data = dane_clean
@@ -503,9 +559,9 @@ model_logit_summary = broom::tidy(model_logit)
 knitr::kable(model_logit_summary)
 ```
 
-Wysokość dochodu jest bardzo ważnym czynnikiem (p-value bardzo niskie), ale ważniejszymi czynnikami są wysokość pożyczki, rodzaj miejsca zamieszkania, cel pożyczki, scoring kredytowy, jaką część dochodu stanowi pożyczka.
+Wysokość dochodu klienta jest bardzo ważnym czynnikiem wpływającym na decyzję o udzieleniu pożyczki, co potwierdzają bardzo niskie wartości p‑value. Jeszcze większe znaczenie mają jednak inne elementy. Kluczową rolę odgrywa wysokość samej pożyczki oraz rodzaj miejsca zamieszkania, ponieważ osoby posiadające własne mieszkanie lub kredyt hipoteczny częściej uzyskują pozytywną decyzję niż osoby wynajmujące. Ważny jest również cel pożyczki, przy czym największy odsetek akceptowanych wniosków dotyczy kategorii venture oraz education. Istotnym czynnikiem pozostaje także scoring kredytowy, który stanowi podstawę oceny ryzyka kredytowego klienta. Duże znaczenie ma relacja pożyczki do dochodu, czyli to, jaką część miesięcznych zarobków stanowi wnioskowana kwota. Im mniejszy udział pożyczki w dochodzie, tym większe prawdopodobieństwo jej akceptacji.
 
-# Pytanie 5 Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
+## Hipoteza: Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
 
 ```{r}
 model_logit_2 = glm(
@@ -516,19 +572,20 @@ model_logit_2 = glm(
 
 summary(model_logit_2)
 ```
-```{r}
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.show='asis'}
 ggplot(dane_clean, aes(x = person_age, y = loan_status)) +
   geom_point(position = position_jitter(height = 0.02), alpha = 0.4) +
   geom_smooth(
     method = "glm",
     method.args = list(family = "binomial"),
     se = TRUE
-  )
+  ) +
+  ggtitle("Wpływ wieku na prawdopodobieństwo uzyskania pożyczki") +
+  xlab("Wiek osoby") +
+  ylab("Prawdopodobieństwo uzyskania pożyczki") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme_minimal()
 ```
 
-W modelu ze wszystkimi zmiennymi (*model_logit*), wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania kredytu.
-Natomiast po wyizolowaniu zmiennej wiek (*model_logit_2*, powyższy wykres), wraz ze wzrostem wieku rośnie prawdopodobieństwo otrzymania kredytu.
-
-# ????
-
-# !!!!!
+W pełnym modelu uwzględniającym wszystkie zmienne (model_logit) obserwujemy, że wraz ze wzrostem wieku maleje prawdopodobieństwo otrzymania kredytu. Jednak po wyizolowaniu samej zmiennej „wiek” i analizie jej wpływu w odrębnym modelu (model_logit_2, zobrazowany na powyższym wykresie) zależność zmienia kierunek: wraz ze wzrostem wieku rośnie prawdopodobieństwo uzyskania pozytywnej decyzji kredytowej.
