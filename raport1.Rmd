@@ -405,7 +405,7 @@ plot_ecdf(dane_clean, var = "loan_amnt")
 #Większość pożyczek koncentruje się poniżej 10 000 PLN (stroma część krzywej), natomiast wartości powyżej 30 000 PLN stanowią jedynie niewielki odsetek obserwacji (krzywa zbliża się do 1 dopiero na końcu).
 ```
 
-```{r wykresy_heatmapa_korelacji_Paweł, echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
+```{r wykresy_heatmapa_korelacji_Paweł, echo=FALSE, message=FALSE, warning=FALSE}
 plot_correlation_heatmap <- function(df,
                                      numeric_vars = NULL,
                                      method = "spearman",
