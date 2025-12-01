@@ -170,17 +170,19 @@ person_age <= 100
 ```
 
 # Oczyszczenie danych z braków i wartości nielogicznych
+
 ## Sprawdzenie poprawności danych przed oczyszczeniem
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE, results='asis'}
 cf <- confront (dane, rules)
 barplot(cf, main="dane")
 #as.data.frame(cf) %>% head()
 ```
 
-
 ## Wizualizacja braków danych
 
 ### Liczba braków na zmienną
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 gg_miss_var(dane)
 ```
@@ -191,14 +193,11 @@ gg_miss_var(dane)
 gg_miss_upset(dane)
 ```
 
-
 ### Wizualizacja braków danych w formie mapy cieplnej
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 vis_miss(dane)
 ```
-
-
 
 ### Wzorzec braków danych
 
@@ -207,17 +206,16 @@ missing_pattern(dane) + theme(axis.text.x = element_text(angle = 45, vjust = 0.1
                                                          hjust = 1, size = 16))
 invisible(NULL)
 ```
+
 ## Lokalizacja błędów
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 fixable_data <- replace_errors(dane, rules)
 cf <- confront (fixable_data, rules)
 barplot(cf, main="fixable_data")
 ```
 
-
-
 ##Imputacja brakujących i nielogicznych danych metodą hotdeck
-
 
 ```{r include=FALSE}
 dane_imp <- hotdeck(fixable_data)
@@ -228,9 +226,7 @@ cf <- confront (dane_imp, rules)
 barplot(cf, main="dane_imp")
 ```
 
-
 ## Sprawdzenie poprawności danych po imputacji
-
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 dane_imp <- dane_imp %>%
@@ -359,7 +355,9 @@ plot_pareto <- function(df, var = "loan_amnt", top_n = 200, unit = "") {
 }
 
 ```
+
 ## Wykres Pareto dla kwoty pożyczki
+
 ```{r wywołanie_pareto, echo=FALSE, message=FALSE, warning=FALSE}
 plot_pareto(dane_clean, var = "loan_amnt", top_n = 10000, unit = "PLN") + 
   ggtitle("Wykres Pareto dla kwoty pożyczki (loan_amnt)")
@@ -383,7 +381,9 @@ plot_distributions <- function(df, var = "loan_amnt", by = "loan_status", log_sc
   combined
 }
 ```
+
 ## Rozkład kwoty pożyczki w zależności od statusu pożyczki
+
 ```{r wywołanie_rozkład, echo=FALSE, message=FALSE, warning=FALSE}
 plot_distributions(dane_clean, var = "loan_amnt", by = "loan_status")
 ```
@@ -399,7 +399,9 @@ plot_ecdf <- function(df, var = "loan_amnt", log_scale = TRUE) {
   ECDF
 }
 ```
+
 ## Wykres funkcji dystrybuanty skumulowanej (ECDF) dla kwoty pożyczki
+
 ```{r wywołanie_ECDF, echo=FALSE, message=FALSE, warning=FALSE}
 plot_ecdf(dane_clean, var = "loan_amnt")
 #Większość pożyczek koncentruje się poniżej 10 000 PLN (stroma część krzywej), natomiast wartości powyżej 30 000 PLN stanowią jedynie niewielki odsetek obserwacji (krzywa zbliża się do 1 dopiero na końcu).
@@ -470,7 +472,9 @@ plot_correlation_heatmap <- function(df,
   return(p)
 }
 ```
+
 ## Mapa korelacji zmiennych numerycznych
+
 ```{r wywołanie_heatmapy, echo=FALSE, message=FALSE, warning=FALSE}
 plot_correlation_heatmap(dane_clean) 
 ```
