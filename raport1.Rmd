@@ -16,7 +16,7 @@ always_allow_html: true
 
 ```{r setup, include=FALSE}
 ## Global options
-knitr::opts_chunk$set(echo = FALSE, cache = TRUE)
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 
 #pobieranie i ładowanie bibliotek bez potrzeby instalacji
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
