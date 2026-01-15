@@ -1,4 +1,4 @@
-# analizadanych
+# Analiza danych w R - Projekt końcowy
 
 Projekt z przedmiotu: Analiza danych w R
 
