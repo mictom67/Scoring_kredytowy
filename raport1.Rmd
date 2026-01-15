@@ -21,8 +21,7 @@ knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 #pobieranie i ładowanie bibliotek bez potrzeby instalacji
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
-  tidyverse, lubridate, rmdformats, dplyr, naniar,
-  finalfit, VIM, validate, errorlocate, ggplot2
+  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc
 )
 
 library(tidyverse)
@@ -35,17 +34,11 @@ library(VIM)
 library(validate)
 library(errorlocate)
 library(ggplot2)
-library(janitor) #konieczne do wykresów
-#install.packages("janitor") #<- do pobrania dla wszystkich, jak pobierzecie to usuńcie!!!
-library(scales) #konieczne do wykresów
-#install.packages("scales") #<- do pobrania dla wszystkich, jak pobierzecie to usuńcie!!!!
-#install.packages("ggcorrplot")  #<- do pobrania dla wszystkich, jak pobierzecie to usuńcie!!!!
-library(ggcorrplot) #konieczne do wykresów
-#install.packages("patchwork") #<- do pobrania dla wszystkich, jak pobierzecie to usuńcie!!!!
-library(patchwork) #konieczne do wykresów
-#install.packages("Hmisc") #<- do pobrania dla wszystkich, jak pobierzecie to usuńcie!!!!
-library(Hmisc) #konieczne do wykresów
-
+library(janitor)
+library(scales)
+library(ggcorrplot)
+library(patchwork)
+library(Hmisc)
 ```
 
 ```{r include=FALSE}
