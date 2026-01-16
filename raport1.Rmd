@@ -500,15 +500,25 @@ for (i in 1:(ncol(dane_clean)-1)) {
   udzielono = dane_clean$loan_status == 1
   nie_udzielono = dane_clean$loan_status == 0
   if (class(dane_col) == "numeric") {
-    print(paste0(
-      colnames(dane_clean)[i],
-      " - udzielono: ", round(mean(dane_col[udzielono], na.rm = TRUE), 3)
-      , " - nie udzielono: ", round(mean(dane_col[nie_udzielono], na.rm = TRUE), 3)
-    ))
+    p = ggplot(dane_clean) +
+      geom_boxplot(aes(x = as.factor(loan_status), y = dane_col, fill = as.factor(loan_status))) +
+      labs(
+        title = paste("Boxplot:", colnames(dane_clean)[i], "by loan_status"),
+        x = "loan_status",
+        y = colnames(dane_clean)[i],
+        fill = "Loan status"
+      )
+    print(p)
+    
+    # cat(paste0("\n",
+    #   colnames(dane_clean)[i],
+    #   " - udzielono: ", round(mean(dane_col[udzielono], na.rm = TRUE), 3)
+    #   , " - nie udzielono: ", round(mean(dane_col[nie_udzielono], na.rm = TRUE), 3)
+    # ))
     
     
   } else {
-    print(prop.table(table(dane_col, dane_clean$loan_status), margin=1))
+    prop.table(table(dane_col, dane_clean$loan_status), margin=1) %>% knitr::kable() %>% print()
   }
 }
 
@@ -543,11 +553,21 @@ for (i in 1:(ncol(dane_clean)-1)) {
 
 ***Do oszacowania wpływu zmiennych zastosujemy regresję logistyczną***
 
+Na podstawie poprzedniej analizy bierzemy pod uwagę czynniki wpływające na udzielenie lub nieudzielenie pożyczki (uwzględniamy tylko kolumny numeryczne do policzenia korelacji).
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# wykres korelacji
+dane_clean %>% 
+  select(loan_status, person_income, loan_int_rate, loan_percent_income) %>% 
+  plot_correlation_heatmap()
+
+```
+
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 options(scipen=20)
 model_logit = glm(
   data = dane_clean
-  , formula = as.factor(loan_status) ~ .
+  , formula = as.factor(loan_status) ~ loan_percent_income
   , family = binomial
 )
 
@@ -556,19 +576,17 @@ model_logit_summary = broom::tidy(model_logit)
 knitr::kable(model_logit_summary)
 ```
 
-Wysokość dochodu klienta jest bardzo ważnym czynnikiem wpływającym na decyzję o udzieleniu pożyczki, co potwierdzają bardzo niskie wartości p‑value. Jeszcze większe znaczenie mają jednak inne elementy. Kluczową rolę odgrywa wysokość samej pożyczki oraz rodzaj miejsca zamieszkania, ponieważ osoby posiadające własne mieszkanie lub kredyt hipoteczny częściej uzyskują pozytywną decyzję niż osoby wynajmujące. Ważny jest również cel pożyczki, przy czym największy odsetek akceptowanych wniosków dotyczy kategorii venture oraz education. Istotnym czynnikiem pozostaje także scoring kredytowy, który stanowi podstawę oceny ryzyka kredytowego klienta. Duże znaczenie ma relacja pożyczki do dochodu, czyli to, jaką część miesięcznych zarobków stanowi wnioskowana kwota. Im mniejszy udział pożyczki w dochodzie, tym większe prawdopodobieństwo jej akceptacji.
+Na podstawie oszacowanego powyżej modelu regresji widzimy wizualizację wpływu relacji pożyczki do dochodu na prawdopodobieństwo uzyskania pożyczki. Przykładowo, dla klienta u którego pożyczka stanowi 40% dochodu, prawdopodobieństwo uzyskania pożyczki wynosi około 23%.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(dane_clean, aes(x = loan_percent_income, y = loan_status)) +
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+```
+
+Duże znaczenie ma relacja pożyczki do dochodu, czyli to, jaką część miesięcznych zarobków stanowi wnioskowana kwota. Im mniejszy udział pożyczki w dochodzie, tym większe prawdopodobieństwo jej akceptacji. 
 
 ## Hipoteza: Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
-
-```{r}
-model_logit_2 = glm(
-  data = dane_clean
-  , formula = as.factor(loan_status) ~ person_age
-  , family = binomial
-)
-
-summary(model_logit_2)
-```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, fig.show='asis'}
 ggplot(dane_clean, aes(x = person_age, y = loan_status)) +
@@ -585,4 +603,16 @@ ggplot(dane_clean, aes(x = person_age, y = loan_status)) +
   theme_minimal()
 ```
 
-W pełnym modelu uwzględniającym wszystkie zmienne (model_logit) obserwujemy, że wraz ze wzrostem wieku maleje prawdopodobieństwo otrzymania kredytu. Jednak po wyizolowaniu samej zmiennej „wiek” i analizie jej wpływu w odrębnym modelu (model_logit_2, zobrazowany na powyższym wykresie) zależność zmienia kierunek: wraz ze wzrostem wieku rośnie prawdopodobieństwo uzyskania pozytywnej decyzji kredytowej.
+```{r}
+model_logit_2 = glm(
+  data = dane_clean
+  , formula = as.factor(loan_status) ~ person_age
+  , family = binomial
+)
+
+model_logit_summary_2 = broom::tidy(model_logit_2)
+knitr::kable(model_logit_summary_2)
+```
+
+
+Na podstawie wykresu oraz modelu widzimy, że wraz z wiekiem prawdopodobieństwo uzyskania pożyczki rośnie, ale trend ten nie jest aż tak wyraźny jak w przypadku relacji pożyczki do dochodu. Wynika to z faktu, że model regresji logistycznej nie uchwyci związków nieliniowych. Do pewnego wieku natualne jest, że łatwiej uzyskać pożyczkę, bo ma się stabilniejszą sytuację życiową. Ale później wraz z wiekiem jest trudniej, bo rośnie ryzyko niespłacenia pożyczki.
