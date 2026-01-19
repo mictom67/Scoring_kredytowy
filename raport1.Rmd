@@ -602,11 +602,11 @@ Na podstawie wykresu oraz modelu widzimy, że wraz z wiekiem prawdopodobieństwo
 
 # Analiza opisowa
 
-```{r, Analiza opisowa, echo=FALSE, message=FALSE, warning=FALSE}
+```{r Analiza opisowa, message=FALSE, warning=FALSE, include=FALSE}
 dane_clean <- dane_clean %>% mutate(loan_status = as.factor(loan_status))
 
-# 1) Przegląd ogólny
-skim(dane_clean)
+# 1) Przegląd ogólnyskim(dane_clean)
+
 
 # 2) Statystyki opisowe dla całej próby (numeryczne)
 desc_all <- dane_clean %>%
@@ -662,7 +662,7 @@ explanatory <- c(
 )
 
 ff_table <- summary_factorlist(
-  dane_clean,
+  dane_ff,
   dependent,
   explanatory,
   p = TRUE,
@@ -671,6 +671,27 @@ ff_table <- summary_factorlist(
 )
 
 ff_table %>% knitr::kable(caption = "Analiza opisowa wg loan_status (z testami)")
+```
+
+```{r, Zestawienie analizy opisowej - kategoryczne, echo=FALSE, message=FALSE, warning=FALSE}
+dane_ff <- dane_clean %>%
+  mutate(loan_status = factor(loan_status, levels = c(0, 1),
+                              labels = c("Odrzucona", "Zatwierdzona")))
+dependent <- "loan_status"
+explanatory <- c("person_gender","person_education","person_home_ownership","loan_intent",
+  "previous_loan_defaults_on_file"
+)
+
+ff_table2 <- summary_factorlist(
+  dane_ff,
+  dependent,
+  explanatory,
+  p = TRUE,
+  na_include = TRUE,
+  add_dependent_label = TRUE
+)
+
+ff_table2 %>% knitr::kable(caption = "Analiza opisowa wg loan_status (z testami)")
 ```
 
 ```{r}
