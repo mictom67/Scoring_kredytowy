@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 #pobieranie i ładowanie bibliotek bez potrzeby instalacji
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
-  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr,
+  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr
 )
 ```
 
@@ -673,4 +673,131 @@ ff_table <- summary_factorlist(
 ff_table %>% knitr::kable(caption = "Analiza opisowa wg loan_status (z testami)")
 ```
 
+```{r, zestawienie analizy opisowej - kontynuacja, echo=FALSE, message=FALSE, warning=FALSE}
+# Przygotowanie grupy (etykiety 0/1 -> opisowe)
+dane_psych <- dane_clean %>%
+  mutate(loan_status = factor(loan_status, levels = c(0, 1),
+                              labels = c("Odrzucona", "Zatwierdzona")))
 
+# Pomocnicze funkcje, które są odporne na NA i 0 (żeby uniknąć dzielenia przez 0)
+sd_pct <- function(x) {
+  m <- mean(x, na.rm = TRUE)
+  if (is.na(m) || m == 0) return(NA_real_)
+  100 * sd(x, na.rm = TRUE) / m
+}
+qd_pct <- function(x) {
+  med <- median(x, na.rm = TRUE)
+  if (is.na(med) || med == 0) return(NA_real_)
+  100 * (IQR(x, na.rm = TRUE) / med)
+}
+
+# Definicja „raportu” jak w przykładzie – dla kilku kluczowych zmiennych
+raport <- list(
+  "Kwota pożyczki [PLN]" = list(
+    "Min"                 = ~ round(min(loan_amnt, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(loan_amnt, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(loan_amnt, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(loan_amnt, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(loan_amnt, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(loan_amnt, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(loan_amnt, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(loan_amnt, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(loan_amnt, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(loan_amnt), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(loan_amnt), 2),
+    "Skośność"            = ~ round(psych::skew(loan_amnt, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(loan_amnt, na.rm = TRUE), 2)
+  ),
+  "Dochód roczny [PLN]" = list(
+    "Min"                 = ~ round(min(person_income, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(person_income, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(person_income, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(person_income, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(person_income, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(person_income, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(person_income, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(person_income, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(person_income, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(person_income), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(person_income), 2),
+    "Skośność"            = ~ round(psych::skew(person_income, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(person_income, na.rm = TRUE), 2)
+  ),
+  "Pożyczka / dochód [%]" = list(
+    "Min"                 = ~ round(min(loan_percent_income, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(loan_percent_income, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(loan_percent_income, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(loan_percent_income, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(loan_percent_income, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(loan_percent_income, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(loan_percent_income, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(loan_percent_income, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(loan_percent_income, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(loan_percent_income), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(loan_percent_income), 2),
+    "Skośność"            = ~ round(psych::skew(loan_percent_income, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(loan_percent_income, na.rm = TRUE), 2)
+  ),
+  "Oprocentowanie [%]" = list(
+    "Min"                 = ~ round(min(loan_int_rate, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(loan_int_rate, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(loan_int_rate, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(loan_int_rate, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(loan_int_rate, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(loan_int_rate, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(loan_int_rate, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(loan_int_rate, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(loan_int_rate, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(loan_int_rate), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(loan_int_rate), 2),
+    "Skośność"            = ~ round(psych::skew(loan_int_rate, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(loan_int_rate, na.rm = TRUE), 2)
+  ),
+  "Credit score" = list(
+    "Min"                 = ~ round(min(credit_score, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(credit_score, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(credit_score, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(credit_score, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(credit_score, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(credit_score, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(credit_score, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(credit_score, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(credit_score, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(credit_score), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(credit_score), 2),
+    "Skośność"            = ~ round(psych::skew(credit_score, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(credit_score, na.rm = TRUE), 2)
+  ),
+  "Wiek [lata]" = list(
+    "Min"                 = ~ round(min(person_age, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(person_age, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(person_age, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(person_age, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(person_age, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(person_age, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(person_age, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(person_age, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(person_age, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(person_age), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(person_age), 2),
+    "Skośność"            = ~ round(psych::skew(person_age, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(person_age, na.rm = TRUE), 2)
+  )
+)
+
+# Budowa tabeli z podziałem na loan_status
+tabela <- psych::summary_table(
+  dane_psych,
+  summaries = raport,
+  by = c("loan_status")
+)
+
+# Ładne drukowanie
+kolumny <- c("Statystyka", levels(dane_psych$loan_status))
+align_code <- paste0("l", strrep("c", length(levels(dane_psych$loan_status))))
+kable(tabela,
+      digits = 2,
+      align = align_code,
+      caption = "Statystyki opisowe kluczowych zmiennych wg statusu pożyczki",
+      col.names = kolumny)
+```
