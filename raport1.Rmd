@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 #pobieranie i ładowanie bibliotek bez potrzeby instalacji
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
-  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc
+  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr,
 )
 
 library(tidyverse)
@@ -39,6 +39,8 @@ library(scales)
 library(ggcorrplot)
 library(patchwork)
 library(Hmisc)
+library(gtsummary)
+
 ```
 
 ```{r include=FALSE}
@@ -554,6 +556,7 @@ for (i in 1:(ncol(dane_clean)-1)) {
 ***Do oszacowania wpływu zmiennych zastosujemy regresję logistyczną***
 
 Na podstawie poprzedniej analizy bierzemy pod uwagę czynniki wpływające na udzielenie lub nieudzielenie pożyczki (uwzględniamy tylko kolumny numeryczne do policzenia korelacji).
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # wykres korelacji
 dane_clean %>% 
@@ -561,7 +564,6 @@ dane_clean %>%
   plot_correlation_heatmap()
 
 ```
-
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 options(scipen=20)
@@ -584,7 +586,7 @@ ggplot(dane_clean, aes(x = loan_percent_income, y = loan_status)) +
   geom_smooth(method = "glm", method.args = list(family = "binomial"))
 ```
 
-Duże znaczenie ma relacja pożyczki do dochodu, czyli to, jaką część miesięcznych zarobków stanowi wnioskowana kwota. Im mniejszy udział pożyczki w dochodzie, tym większe prawdopodobieństwo jej akceptacji. 
+Duże znaczenie ma relacja pożyczki do dochodu, czyli to, jaką część miesięcznych zarobków stanowi wnioskowana kwota. Im mniejszy udział pożyczki w dochodzie, tym większe prawdopodobieństwo jej akceptacji.
 
 ## Hipoteza: Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
 
@@ -614,5 +616,78 @@ model_logit_summary_2 = broom::tidy(model_logit_2)
 knitr::kable(model_logit_summary_2)
 ```
 
-
 Na podstawie wykresu oraz modelu widzimy, że wraz z wiekiem prawdopodobieństwo uzyskania pożyczki rośnie, ale trend ten nie jest aż tak wyraźny jak w przypadku relacji pożyczki do dochodu. Wynika to z faktu, że model regresji logistycznej nie uchwyci związków nieliniowych. Do pewnego wieku natualne jest, że łatwiej uzyskać pożyczkę, bo ma się stabilniejszą sytuację życiową. Ale później wraz z wiekiem jest trudniej, bo rośnie ryzyko niespłacenia pożyczki.
+
+# Analiza opisowa
+
+```{r, Analiza opisowa, echo=FALSE, message=FALSE, warning=FALSE}
+dane_clean <- dane_clean %>% mutate(loan_status = as.factor(loan_status))
+
+# 1) Przegląd ogólny
+library(skimr)
+skim(dane_clean)
+
+# 2) Statystyki opisowe dla całej próby (numeryczne)
+desc_all <- dane_clean %>%
+  summarise(across(where(is.numeric), list(
+    n = ~sum(!is.na(.)),
+    mean = ~mean(., na.rm = TRUE),
+    sd = ~sd(., na.rm = TRUE),
+    min = ~min(., na.rm = TRUE),
+    q1 = ~quantile(., 0.25, na.rm = TRUE),
+    median = ~median(., na.rm = TRUE),
+    q3 = ~quantile(., 0.75, na.rm = TRUE),
+    max = ~max(., na.rm = TRUE)
+  ), .names = "{.col}_{.fn}"))
+knitr::kable(t(desc_all), caption = "Statystyki opisowe — cała próba")
+
+# 3) Statystyki wg statusu pożyczki
+desc_by_status <- dane_clean %>%
+  group_by(loan_status) %>%
+  summarise(across(where(is.numeric), list(
+    n = ~sum(!is.na(.)),
+    mean = ~mean(., na.rm = TRUE),
+    sd = ~sd(., na.rm = TRUE),
+    median = ~median(., na.rm = TRUE)
+  ), .names = "{.col}_{.fn}"),
+  .groups = "drop")
+knitr::kable(desc_by_status, caption = "Statystyki opisowe wg loan_status")
+
+# 4) Rozkłady kategoryczne z procentami wg loan_status
+library(janitor)
+cat_vars <- c("person_gender","person_education","person_home_ownership","loan_intent","previous_loan_defaults_on_file")
+for (v in cat_vars) {
+  tab <- dane_clean %>%
+    tabyl(.data[[v]], loan_status) %>%
+    adorn_totals("row") %>%
+    adorn_percentages("row") %>%
+    adorn_pct_formatting(digits = 1) %>%
+    adorn_ns()
+  print(knitr::kable(tab, caption = paste("Rozkład", v, "wg loan_status")))
+}
+```
+
+```{r, Zestawienie analizy opisowej, echo=FALSE, message=FALSE, warning=FALSE}
+dane_clean <- dane_clean %>%
+  mutate(loan_status = factor(loan_status, levels = c(0, 1),
+                              labels = c("Odrzucona", "Zatwierdzona")))
+
+dependent <- "loan_status"
+explanatory <- c(
+  "person_age","person_income","person_emp_exp","loan_amnt","loan_int_rate",
+  "loan_percent_income","cb_person_cred_hist_length","credit_score",
+  "person_gender","person_education","person_home_ownership","loan_intent",
+  "previous_loan_defaults_on_file"
+)
+
+ff_table <- summary_factorlist(
+  dane_clean,
+  dependent,
+  explanatory,
+  p = TRUE,
+  na_include = TRUE,
+  add_dependent_label = TRUE
+)
+
+ff_table %>% knitr::kable(caption = "Analiza opisowa wg loan_status (z testami)")
+```
