@@ -178,10 +178,11 @@ vis_miss(dane)
 
 ### Wzorzec braków danych
 
-```{r szachownica, echo=FALSE, fig.height=20, fig.width=20, message=FALSE, warning=FALSE}
-missing_pattern(dane) + theme(axis.text.x = element_text(angle = 45, vjust = 0.1,
+```{r szachownica, echo=FALSE, message=FALSE, warning=FALSE,  fig.width=20, fig.height=20}
+p <- missing_pattern(dane) + theme(axis.text.x = element_text(angle = 45, vjust = 0.1,
                                                          hjust = 1, size = 16))
-invisible(NULL)
+
+invisible(capture.output(print(p), file = NULL))
 ```
 
 ## Lokalizacja błędów
@@ -656,9 +657,7 @@ dane_ff <- dane_clean %>%
 dependent <- "loan_status"
 explanatory <- c(
   "person_age","person_income","person_emp_exp","loan_amnt","loan_int_rate",
-  "loan_percent_income","cb_person_cred_hist_length","credit_score",
-  "person_gender","person_education","person_home_ownership","loan_intent",
-  "previous_loan_defaults_on_file"
+  "loan_percent_income","cb_person_cred_hist_length","credit_score"
 )
 
 ff_table <- summary_factorlist(
@@ -674,11 +673,15 @@ ff_table %>% knitr::kable(caption = "Analiza opisowa wg loan_status (z testami)"
 ```
 
 ```{r, Zestawienie analizy opisowej - kategoryczne, echo=FALSE, message=FALSE, warning=FALSE}
+
+
 dane_ff <- dane_clean %>%
   mutate(loan_status = factor(loan_status, levels = c(0, 1),
                               labels = c("Odrzucona", "Zatwierdzona")))
+
 dependent <- "loan_status"
-explanatory <- c("person_gender","person_education","person_home_ownership","loan_intent",
+explanatory <- c(
+  "person_gender","person_education","person_home_ownership","loan_intent",
   "previous_loan_defaults_on_file"
 )
 
@@ -691,7 +694,46 @@ ff_table2 <- summary_factorlist(
   add_dependent_label = TRUE
 )
 
-ff_table2 %>% knitr::kable(caption = "Analiza opisowa wg loan_status (z testami)")
+# --- grube linie po konkretnych wierszach (np. Male, Master, Rent, Venture, 1) ---
+# Uwaga: finalfit czasem różnie nazywa kolumnę z poziomem (level) – obsługujemy najczęstsze przypadki.
+level_col <- intersect(names(ff_table2), c("level", "levels", "category", "value", "label"))[1]
+if (is.na(level_col)) level_col <- names(ff_table2)[2]  # awaryjnie: zwykle 2. kolumna
+
+# Funkcja pomocnicza: znajduje indeksy wierszy (1..n), gdzie poziom == szukany (case-insensitive)
+find_row_idx <- function(x) {
+  which(str_to_lower(str_trim(ff_table2[[level_col]])) == str_to_lower(x))
+}
+
+cut_after <- c("male", "master", "rent", "venture", "1")
+cut_rows <- sort(unique(unlist(lapply(cut_after, find_row_idx))))
+# row_spec w kableExtra: 0 = header, 1..n = wiersze danych
+cut_rows_kable <- cut_rows
+
+k <- knitr::kable(
+  ff_table2,
+  format = "html",
+  caption = "Analiza opisowa wg loan_status (z testami) — zmienne kategoryczne",
+  escape = TRUE
+)
+
+tbl <- k %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "bordered"),
+    full_width = FALSE,
+    font_size = 14
+  ) %>%
+  kableExtra::row_spec(0, extra_css = "white-space: normal; padding: 10px 12px; line-height: 1.25;") %>%
+  kableExtra::row_spec(1:nrow(ff_table2), extra_css = "padding: 8px 12px; line-height: 1.25;")
+
+# Dodaj grube kreski po wskazanych wierszach (jeśli znalezione)
+if (length(cut_rows_kable) > 0) {
+  for (r in cut_rows_kable) {
+    tbl <- tbl %>%
+      kableExtra::row_spec(r, extra_css = "border-bottom: 3px solid #444 !important;")
+  }
+}
+
+tbl
 ```
 
 ```{r}
