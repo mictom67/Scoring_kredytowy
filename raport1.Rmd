@@ -23,24 +23,6 @@ if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
   tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr,
 )
-
-library(tidyverse)
-library(lubridate)
-library(rmdformats)
-library(dplyr)
-library(naniar)
-library(finalfit)
-library(VIM)
-library(validate)
-library(errorlocate)
-library(ggplot2)
-library(janitor)
-library(scales)
-library(ggcorrplot)
-library(patchwork)
-library(Hmisc)
-library(gtsummary)
-
 ```
 
 ```{r include=FALSE}
@@ -313,7 +295,7 @@ clean_basic <- function(df) {
 ```
 
 ```{r wywołanie_czyszczenia, include=FALSE}
-dane_clean <- clean_basic(dane)
+dane_clean <- clean_basic(dane_imp)
 glimpse(dane_clean)
 ```
 
@@ -624,7 +606,6 @@ Na podstawie wykresu oraz modelu widzimy, że wraz z wiekiem prawdopodobieństwo
 dane_clean <- dane_clean %>% mutate(loan_status = as.factor(loan_status))
 
 # 1) Przegląd ogólny
-library(skimr)
 skim(dane_clean)
 
 # 2) Statystyki opisowe dla całej próby (numeryczne)
@@ -668,7 +649,7 @@ for (v in cat_vars) {
 ```
 
 ```{r, Zestawienie analizy opisowej, echo=FALSE, message=FALSE, warning=FALSE}
-dane_clean <- dane_clean %>%
+dane_ff <- dane_clean %>%
   mutate(loan_status = factor(loan_status, levels = c(0, 1),
                               labels = c("Odrzucona", "Zatwierdzona")))
 
@@ -691,3 +672,5 @@ ff_table <- summary_factorlist(
 
 ff_table %>% knitr::kable(caption = "Analiza opisowa wg loan_status (z testami)")
 ```
+
+
