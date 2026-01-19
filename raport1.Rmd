@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 #pobieranie i ładowanie bibliotek bez potrzeby instalacji
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
-  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr
+  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra
 )
 ```
 
@@ -673,7 +673,7 @@ ff_table <- summary_factorlist(
 ff_table %>% knitr::kable(caption = "Analiza opisowa wg loan_status (z testami)")
 ```
 
-```{r, zestawienie analizy opisowej - kontynuacja, echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
 # Przygotowanie grupy (etykiety 0/1 -> opisowe)
 dane_psych <- dane_clean %>%
   mutate(loan_status = factor(loan_status, levels = c(0, 1),
@@ -691,7 +691,7 @@ qd_pct <- function(x) {
   100 * (IQR(x, na.rm = TRUE) / med)
 }
 
-# Definicja „raportu” jak w przykładzie – dla kilku kluczowych zmiennych
+# Definicja „raportu” – dla kilku kluczowych zmiennych
 raport <- list(
   "Kwota pożyczki [PLN]" = list(
     "Min"                 = ~ round(min(loan_amnt, na.rm = TRUE), 2),
@@ -785,19 +785,54 @@ raport <- list(
   )
 )
 
-# Budowa tabeli z podziałem na loan_status
-tabela <- psych::summary_table(
-  dane_psych,
+make_summary_table_wide <- function(data, summaries, by) {
+  stopifnot(length(by) == 1)
+  by <- by[[1]]
+  groups <- levels(data[[by]])
+  if (is.null(groups)) groups <- unique(as.character(data[[by]]))
+
+  stat_names <- names(summaries[[1]])
+  out <- tibble::tibble(Statystyka = stat_names)
+
+  for (block_name in names(summaries)) {
+    stats_list <- summaries[[block_name]]
+
+    for (g in groups) {
+      dsub <- data[data[[by]] == g, , drop = FALSE]
+      vals <- vapply(stats_list, function(fn) {
+        rlang::eval_tidy(rlang::f_rhs(fn), data = dsub)
+      }, numeric(1))
+      out[[paste0(block_name, " — ", g)]] <- as.numeric(vals)
+    }
+  }
+  out
+}
+
+tabela_wide <- make_summary_table_wide(
+  data = dane_psych,
   summaries = raport,
-  by = c("loan_status")
+  by = "loan_status"
 )
 
-# Ładne drukowanie
-kolumny <- c("Statystyka", levels(dane_psych$loan_status))
-align_code <- paste0("l", strrep("c", length(levels(dane_psych$loan_status))))
-kable(tabela,
-      digits = 2,
-      align = align_code,
-      caption = "Statystyki opisowe kluczowych zmiennych wg statusu pożyczki",
-      col.names = kolumny)
+# INTERAKTYWNA TABELA HTML z przypiętą 1. kolumną (Statystyka)
+# (FixedColumns działa jak "zablokowana kolumna" przy scrollowaniu)
+if (!requireNamespace("DT", quietly = TRUE)) install.packages("DT")
+
+DT::datatable(
+  tabela_wide,
+  rownames = FALSE,
+  extensions = c("FixedColumns"),
+  options = list(
+    dom = "tip",          # bez wyszukiwarki/paginacji (możesz zmienić)
+    scrollX = TRUE,
+    scrollY = "650px",
+    paging = FALSE,
+    fixedColumns = list(leftColumns = 1),
+    columnDefs = list(list(width = "160px", targets = 0))
+  ),
+  caption = htmltools::tags$caption(
+    style = 'caption-side: top; text-align: left; font-weight: 600;',
+    "Statystyki opisowe kluczowych zmiennych wg statusu pożyczki (zmienne obok siebie)"
+  )
+)
 ```
