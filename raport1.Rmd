@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 #pobieranie i ładowanie bibliotek bez potrzeby instalacji
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
-  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra,
+  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra, rstatix, forcats, pROC, plotly, ggeffects, effectsize, ggstatsplot, purrr
 )
 ```
 
@@ -476,9 +476,9 @@ plot_correlation_heatmap <- function(df,
 ```{r wywołanie_heatmapy, echo=FALSE, message=FALSE, warning=FALSE}
 plot_correlation_heatmap(dane_clean) 
 ```
-
+# Wyniki w odniesieniu do pytań badawczych
 ```{r wykresy-violin-boxplot-Paweł, echo=FALSE, warning=FALSE}
-plot_violin <- function(df, numeric_var = "person_income", cat_var = "loan_status", log_scale = TRUE) {
+plot_violin <- function(df, numeric_var = "dochod_roczny", cat_var = "status_pozyczki", log_scale = TRUE) {
   df2 <- df %>% filter(!is.na(.data[[numeric_var]]))
   violin_boxplot <- ggplot(df2, aes_string(x = cat_var, y = numeric_var, fill = cat_var)) +
     geom_violin(trim = TRUE, alpha = 0.6) +
@@ -488,11 +488,6 @@ plot_violin <- function(df, numeric_var = "person_income", cat_var = "loan_statu
   if (log_scale) violin_boxplot <- violin_boxplot + scale_y_log10(labels = comma)
   violin_boxplot
 }
-```
-
-# Wyniki w odniesieniu do pytań badawczych
-
-```{r wywołanie_violin, echo=FALSE, message=FALSE, warning=FALSE}
 plot_violin(dane_clean, numeric_var = "dochod_roczny", cat_var = "status_pozyczki")
 #W większości przypadków dochody osób biorących pożyczki są relatywnie niskie (większość skupiona w dolnym zakresie), ale jest też mała grupa osób z bardzo wysokimi dochodami — wykres pokazuje tę nierównomierność i kilka ekstremalnych wartości.
 ```
@@ -500,34 +495,135 @@ plot_violin(dane_clean, numeric_var = "dochod_roczny", cat_var = "status_pozyczk
 ## Pytanie: Jakie są główne różnice w profilu (np. dochód, wiek, stan cywilny) między klientami, którzy otrzymali pozytywną ocenę, a tymi, którzy otrzymali negatywną?
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-for (i in 1:(ncol(dane_clean)-1)) {
-  dane_col = dane_clean[[i]]
-  udzielono = dane_clean$status_pozyczki == 1
-  nie_udzielono = dane_clean$status_pozyczki == 0
-  if (class(dane_col) == "numeric") {
-    p = ggplot(dane_clean) +
-      geom_boxplot(aes(x = as.factor(status_pozyczki), y = dane_col, fill = as.factor(status_pozyczki))) +
-      labs(
-        title = paste("Boxplot:", colnames(dane_clean)[i], "by status_pozyczki"),
-        x = "status_pozyczki",
-        y = colnames(dane_clean)[i],
-        fill = "Status pożyczki"
-      )
-    print(p)
-    
-    # cat(paste0("\n",
-    #   colnames(dane_clean)[i],
-    #   " - udzielono: ", round(mean(dane_col[udzielono], na.rm = TRUE), 3)
-    #   , " - nie udzielono: ", round(mean(dane_col[nie_udzielono], na.rm = TRUE), 3)
-    # ))
-    
-    
-  } else {
-    prop.table(table(dane_col, dane_clean$status_pozyczki), margin=1) %>% knitr::kable() %>% print()
-  }
+# Upewnij się, że status_pozyczki istnieje
+stopifnot("status_pozyczki" %in% names(dane_clean))
+
+# Lista dozwolonych kolumn
+allowed_cols <- c(
+  "wiek",
+  "plec",
+  "wyksztalcenie",
+  "dochod_roczny",
+  "doswiadczenie_zawodowe_lata",
+  "status_mieszkaniowy",
+  "kwota_pozyczki",
+  "cel_pozyczki",
+  "oprocentowanie",
+  "procent_dochodu_pozyczka",
+  "dlugosc_historii_kredytowej",
+  "scoring_kredytowy",
+  "wczesniejsze_zaleglosci",
+  "status_pozyczki"
+)
+
+# Bierzemy tylko te kolumny, które faktycznie istnieją w danych
+allowed_cols <- intersect(allowed_cols, names(dane_clean))
+
+# Funkcja skracająca i łamiąca tytuł osi Y na krótsze segmenty (dla lepszej czytelności pionowej)
+wrap_label <- function(s) {
+  s <- gsub("_", " ", s)      # zamiana podkreślników na spacje
+  s <- gsub(" ", "<br>", s)   # łamanie w miejscach spacji
+  s
 }
 
+# Rozdzielenie na numeryczne i nienumeryczne w obrębie dozwolonych kolumn
+numeric_cols <- allowed_cols[sapply(dane_clean[allowed_cols], is.numeric)]
+numeric_cols <- setdiff(numeric_cols, "status_pozyczki")
+cat_cols <- setdiff(allowed_cols, c(numeric_cols, "status_pozyczki"))
 
+# Jeśli są kolumny numeryczne, zbuduj jeden interaktywny obiekt z wykresami
+if (length(numeric_cols) > 0) {
+  ggplots <- lapply(numeric_cols, function(col) {
+    ggplot(dane_clean, aes(
+      x = as.factor(status_pozyczki),
+      y = .data[[col]],
+      fill = as.factor(status_pozyczki)
+    )) +
+      geom_boxplot() +
+      labs(
+        title = col,                          # krótki, czytelny tytuł panelu
+        x = "status_pozyczki",
+        y = wrap_label(col),                  # pionowa oś Y łamana na segmenty
+        fill = "Status pożyczki"
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(
+        legend.position = "none",
+        plot.title = element_text(face = "bold", size = 12),
+        plot.margin = margin(t = 6, r = 6, b = 6, l = 24)  # dodatkowy lewy margines pod tytuł osi Y
+      )
+  })
+
+  plotly_plots <- lapply(ggplots, ggplotly)
+
+  n <- length(plotly_plots)
+  ncols <- min(3, max(1, ceiling(sqrt(n))))
+  nrows <- ceiling(n / ncols)
+
+  combined_plot <- subplot(
+    plotly_plots,
+    nrows = nrows,
+    shareX = TRUE,
+    titleX = TRUE,
+    titleY = TRUE,
+    margin = 0.08   # większy odstęp między panelami
+  ) %>%
+    layout(
+      dragmode = "zoom",
+      title = list(
+        text = "Wykresy pudełkowe dla wybranych kolumn numerycznych (kliknij i zaznacz, aby powiększyć; podwójne kliknięcie resetuje)"
+      ),
+      margin = list(l = 60, r = 30, t = 60, b = 40)  # zwiększone marginesy całej figury
+    ) %>%
+    config(
+      responsive = TRUE,
+      displaylogo = FALSE,
+      modeBarButtonsToAdd = c("zoom2d", "autoscale", "resetScale2d"),
+      toImageButtonOptions = list(format = "png", filename = "wykresy_boxplot", height = 900, width = 1400)
+    )
+
+  # Ustaw większy odstęp tytułu osi od etykiet i włącz automargins dla wszystkich osi
+  y_ids <- paste0("yaxis", c("", 2:n))
+  x_ids <- paste0("xaxis", c("", 2:n))
+
+  y_defs <- setNames(
+    lapply(seq_len(n), function(i) list(title = list(standoff = 30, font = list(size = 11)), automargin = TRUE)),
+    y_ids
+  )
+  x_defs <- setNames(
+    lapply(seq_len(n), function(i) list(title = list(standoff = 12, font = list(size = 11)), automargin = TRUE)),
+    x_ids
+  )
+
+  combined_plot <- do.call(plotly::layout, c(list(p = combined_plot), y_defs, x_defs))
+
+  combined_plot
+}
+
+# Zbiorcza tabela proporcji dla kolumn nienumerycznych (tylko z listy dozwolonych)
+if (length(cat_cols) > 0) {
+  cat_tables <- lapply(cat_cols, function(col) {
+    pt <- prop.table(table(dane_clean[[col]], dane_clean$status_pozyczki), margin = 1)
+    as.data.frame(pt) %>%
+      rename(level = Var1, status_pozyczki = Var2, proportion = Freq) %>%
+      mutate(variable = col) %>%
+      tidyr::pivot_wider(
+        names_from = status_pozyczki,
+        values_from = proportion,
+        names_prefix = "status_"
+      ) %>%
+      select(variable, level, starts_with("status_")) %>%
+      arrange(variable, level)
+  })
+
+  combined_cat_table <- dplyr::bind_rows(cat_tables)
+
+  knitr::kable(
+    combined_cat_table,
+    digits = 3,
+    caption = "Proporcje poziomów wybranych zmiennych kategorycznych względem status_pozyczki (tylko wskazane kolumny)"
+  )
+}
 ```
 
 
@@ -571,19 +667,22 @@ dane_clean %>%
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-options(scipen=20)
-model_logit = glm(
-  data = dane_clean
-  , formula = as.factor(status_pozyczki) ~ procent_dochodu_pozyczka
-  , family = binomial
+options(scipen = 20)
+
+model_logit <- glm(
+  status_pozyczki ~ procent_dochodu_pozyczka,
+  data = dane_clean,
+  family = binomial
 )
 
-# summary(model_logit)
-model_logit_summary = broom::tidy(model_logit)
-knitr::kable(model_logit_summary)
+knitr::kable(broom::tidy(model_logit), digits = 6, caption = "Logit: tylko procent_dochodu_pozyczka")
+
+or_1pp  <- exp(coef(model_logit)["procent_dochodu_pozyczka"] * 0.01)
+or_10pp <- exp(coef(model_logit)["procent_dochodu_pozyczka"] * 0.10)
+knitr::kable(data.frame(OR_1pp = or_1pp, OR_10pp = or_10pp), digits = 3, caption = "Iloraz szans na +1pp i +10pp")
 ```
 
-Na podstawie oszacowanego powyżej modelu regresji widzimy wizualizację wpływu relacji pożyczki do dochodu na prawdopodobieństwo uzyskania pożyczki. Przykładowo, dla klienta u którego pożyczka stanowi 40% dochodu, prawdopodobieństwo uzyskania pożyczki wynosi około 23%.
+Im większy udział raty w dochodzie, tym niższe prawdopodobieństwo otrzymania pożyczki; każdy wzrost o 1 punkt procentowy zmniejsza szanse o około 10% (OR≈0.901), o 10 punktów procentowych o około 65% (OR≈0.353), a przy 40% udziału przewidywane prawdopodobieństwo wynosi około 22%.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 ggplot(dane_clean, aes(x = procent_dochodu_pozyczka, y = status_pozyczki)) +
@@ -591,47 +690,67 @@ ggplot(dane_clean, aes(x = procent_dochodu_pozyczka, y = status_pozyczki)) +
   geom_smooth(method = "glm", method.args = list(family = "binomial"))
 ```
 
-Duże znaczenie ma relacja pożyczki do dochodu, czyli to, jaką część miesięcznych zarobków stanowi wnioskowana kwota. Im mniejszy udział pożyczki w dochodzie, tym większe prawdopodobieństwo jej akceptacji.
+Duże znaczenie ma relacja pożyczki do dochodu, czyli to, jaką część rocznych zarobków stanowi wnioskowana kwota. Im mniejszy udział pożyczki w dochodzie, tym większe prawdopodobieństwo jej akceptacji.
 
 ## Hipoteza: Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, fig.show='asis'}
-ggplot(dane_clean, aes(x = wiek, y = status_pozyczki)) +
-  geom_point(position = position_jitter(height = 0.02), alpha = 0.4) +
-  geom_smooth(
-    method = "glm",
-    method.args = list(family = "binomial"),
-    se = TRUE
+# Dane tylko z kompletnymi wartościami + konwersja 0/1 do typu numerycznego
+df <- dane_clean %>%
+  filter(!is.na(wiek), !is.na(status_pozyczki)) %>%
+  mutate(status_num = as.numeric(as.character(status_pozyczki)))  # zamiana "0"/"1" -> 0/1
+
+# Empiryczne prawdopodobieństwo w przedziałach wieku (bez żadnego modelu)
+ggplot(df, aes(x = wiek, y = status_num)) +
+  stat_summary_bin(fun = mean, bins = 12, geom = "point", size = 2, color = "black") +
+  stat_summary_bin(fun = mean, bins = 12, geom = "line", linewidth = 1, color = "steelblue") +
+  labs(
+    title = "Empiryczna zależność: wiek vs prawdopodobieństwo uzyskania pożyczki",
+    x = "Wiek",
+    y = "Prawdopodobieństwo uzyskania pożyczki"
   ) +
-  ggtitle("Wpływ wieku na prawdopodobieństwo uzyskania pożyczki") +
-  xlab("Wiek osoby") +
-  ylab("Prawdopodobieństwo uzyskania pożyczki") +
-  scale_y_continuous(labels = scales::percent_format()) +
-  theme_minimal()
+  scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1)) +
+  theme_minimal(base_size = 12)
 ```
-
 ```{r}
-model_logit_2 = glm(
-  data = dane_clean
-  , formula = as.factor(status_pozyczki) ~ wiek
-  , family = binomial
-)
+# Dane z kompletnym wiekiem i statusem
+df <- dane_clean %>%
+  filter(!is.na(wiek), !is.na(status_pozyczki)) %>%
+  mutate(status_num = as.numeric(as.character(status_pozyczki)))  # "0"/"1" -> 0/1
 
-model_logit_summary_2 = broom::tidy(model_logit_2)
-knitr::kable(model_logit_summary_2)
+# 2) Udział próby w grupach 5-letnich od 18, z osobną grupą 60+
+breaks  <- c(18, 23, 28, 33, 38, 43, 48, 53, 58, 60, Inf)   # [18,23), ..., [58,60), [60,Inf)
+labels  <- c("18–22","23–27","28–32","33–37","38–42","43–47","48–52","53–57","58–59","60+")
+df_grp  <- dane_clean %>%
+  filter(!is.na(wiek)) %>%
+  mutate(grupa_wiek = cut(wiek, breaks = breaks, labels = labels, right = FALSE, include.lowest = TRUE)) %>%
+  filter(!is.na(grupa_wiek)) %>%
+  count(grupa_wiek, name = "n") %>%
+  mutate(
+    percent = n / sum(n),
+    percent_label = percent_format(accuracy = 0.1)(percent)
+  )
+
+# Wykres udziałów
+ggplot(df_grp, aes(x = grupa_wiek, y = percent)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = percent_label), vjust = -0.2, size = 3.7) +
+  scale_y_continuous(labels = percent_format(accuracy = 1),
+                     limits = c(0, max(df_grp$percent) * 1.15)) +
+  labs(title = "Udział grup wiekowych w całej próbie", x = "Grupa wieku", y = "Udział w próbie") +
+  theme_minimal(base_size = 12)
 ```
 
-Na podstawie wykresu oraz modelu widzimy, że wraz z wiekiem prawdopodobieństwo uzyskania pożyczki rośnie, ale trend ten nie jest aż tak wyraźny jak w przypadku relacji pożyczki do dochodu. Wynika to z faktu, że model regresji logistycznej nie uchwyci związków nieliniowych. Do pewnego wieku natualne jest, że łatwiej uzyskać pożyczkę, bo ma się stabilniejszą sytuację życiową. Ale później wraz z wiekiem jest trudniej, bo rośnie ryzyko niespłacenia pożyczki.
+
+
+Wniosek: W próbie dominuje grupa 23–27 lat (48%), następnie 28–32 (23%) i 18–22 (12%); udział starszych roczników jest bardzo mały (41–60 to pojedyncze procenty, a 60+ zaledwie ~0.2%). Empiryczne prawdopodobieństwo uzyskania pożyczki do okolic 55–60 lat utrzymuje się na poziomie ~75–80% i lekko spada w okolicach 60 lat. Skokowy wzrost powyżej 60 lat nie odzwierciedla rzeczywistej decyzji kredytowej—wynika z zastosowania imputacji hot‑deck dla brakujących danych, a nie z obserwacji; przy tak znikomej liczbie przypadków 60+ wyniki są artefaktem i nie powinny być interpretowane. Podsumowując, w dostępnych realnych obserwacjach trend względem wieku jest co najwyżej płaski lub lekko malejący, natomiast wnioski dla 60+ są niewiarygodne z powodu imputacji i bardzo małej liczebności.
 
 # Analiza opisowa
 
 ```{r Analiza opisowa, message=FALSE, warning=FALSE, include=FALSE}
 dane_clean <- dane_clean %>% mutate(status_pozyczki = as.factor(status_pozyczki))
 
-# 1) Przegląd ogólnyskim(dane_clean)
-
-
-# 2) Statystyki opisowe dla całej próby (numeryczne)
+# 1) Statystyki opisowe dla całej próby (numeryczne)
 desc_all <- dane_clean %>%
   summarise(across(where(is.numeric), list(
     n = ~sum(!is.na(.)),
@@ -645,7 +764,7 @@ desc_all <- dane_clean %>%
   ), .names = "{.col}_{.fn}"))
 knitr::kable(t(desc_all), caption = "Statystyki opisowe — cała próba")
 
-# 3) Statystyki wg statusu pożyczki
+# 2) Statystyki wg statusu pożyczki
 desc_by_status <- dane_clean %>%
   group_by(status_pozyczki) %>%
   summarise(across(where(is.numeric), list(
@@ -657,8 +776,7 @@ desc_by_status <- dane_clean %>%
   .groups = "drop")
 knitr::kable(desc_by_status, caption = "Statystyki opisowe wg status_pozyczki")
 
-# 4) Rozkłady kategoryczne z procentami wg loan_status
-library(janitor)
+# 3) Rozkłady kategoryczne z procentami wg loan_status
 cat_vars <- c("plec","wyksztalcenie","status_mieszkaniowy","cel_pozyczki","wczesniejsze_zaleglosci")
 for (v in cat_vars) {
   tab <- dane_clean %>%
@@ -922,4 +1040,6 @@ DT::datatable(
 )
 ```
 
+
+## Wnioskowanie statystyczne
 
