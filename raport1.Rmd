@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 #pobieranie i ładowanie bibliotek bez potrzeby instalacji
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
-  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra
+  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra,
 )
 ```
 
@@ -300,6 +300,26 @@ dane_clean <- clean_basic(dane_imp)
 glimpse(dane_clean)
 ```
 
+```{r - zmiana nazw zmiennych na polskie, include=FALSE}
+dane_clean <- dane_clean %>%
+  rename(
+    wiek = person_age,
+    plec = person_gender,
+    wyksztalcenie = person_education,
+    dochod_roczny = person_income,
+    doswiadczenie_zawodowe_lata = person_emp_exp,
+    status_mieszkaniowy = person_home_ownership,
+    kwota_pozyczki = loan_amnt,
+    cel_pozyczki = loan_intent,
+    oprocentowanie = loan_int_rate,
+    procent_dochodu_pozyczka = loan_percent_income,
+    dlugosc_historii_kredytowej = cb_person_cred_hist_length,
+    scoring_kredytowy = credit_score,
+    wczesniejsze_zaleglosci = previous_loan_defaults_on_file,
+    status_pozyczki = loan_status
+  )
+```
+
 # Analiza danych
 
 ```{r wykresy-sprawdzanie NA-Paweł, include=FALSE}
@@ -337,12 +357,12 @@ plot_pareto <- function(df, var = "loan_amnt", top_n = 200, unit = "") {
 ## Wykres Pareto dla kwoty pożyczki
 
 ```{r wywołanie_pareto, echo=FALSE, message=FALSE, warning=FALSE}
-plot_pareto(dane_clean, var = "loan_amnt", top_n = 10000, unit = "PLN") + 
-  ggtitle("Wykres Pareto dla kwoty pożyczki (loan_amnt)")
+plot_pareto(dane_clean, var = "kwota_pozyczki", top_n = 10000, unit = "PLN") + 
+  ggtitle("Wykres Pareto dla kwoty pożyczki (kwota_pozyczki)")
 ```
 
 ```{r wykresy-histogram/boxplot-Paweł, echo=FALSE, message=FALSE, warning=FALSE}
-plot_distributions <- function(df, var = "loan_amnt", by = "loan_status", log_scale = TRUE) {
+plot_distributions <- function(df, var = "kwota_pozyczki", by = "status_pozyczki", log_scale = TRUE) {
   df2 <- df %>% filter(!is.na(.data[[var]]))
   df2 <- df2 %>% mutate(!!by := as.factor(.data[[by]]))
   p_hist <- ggplot(df2, aes_string(x = var, fill = by, group = by)) +
@@ -363,11 +383,11 @@ plot_distributions <- function(df, var = "loan_amnt", by = "loan_status", log_sc
 ## Rozkład kwoty pożyczki w zależności od statusu pożyczki
 
 ```{r wywołanie_rozkład, echo=FALSE, message=FALSE, warning=FALSE}
-plot_distributions(dane_clean, var = "loan_amnt", by = "loan_status")
+plot_distributions(dane_clean, var = "kwota_pozyczki", by = "status_pozyczki")
 ```
 
 ```{r wykresy-ECDF-Paweł, echo=FALSE, message=FALSE, warning=FALSE}
-plot_ecdf <- function(df, var = "loan_amnt", log_scale = TRUE) {
+plot_ecdf <- function(df, var = "kwota_pozyczki", log_scale = TRUE) {
   df2 <- df %>% filter(!is.na(.data[[var]]))
   ECDF <- ggplot(df2, aes_string(x = var)) +
     stat_ecdf(geom = "step") +
@@ -381,7 +401,7 @@ plot_ecdf <- function(df, var = "loan_amnt", log_scale = TRUE) {
 ## Wykres funkcji dystrybuanty skumulowanej (ECDF) dla kwoty pożyczki
 
 ```{r wywołanie_ECDF, echo=FALSE, message=FALSE, warning=FALSE}
-plot_ecdf(dane_clean, var = "loan_amnt")
+plot_ecdf(dane_clean, var = "kwota_pozyczki")
 #Większość pożyczek koncentruje się poniżej 10 000 PLN (stroma część krzywej), natomiast wartości powyżej 30 000 PLN stanowią jedynie niewielki odsetek obserwacji (krzywa zbliża się do 1 dopiero na końcu).
 ```
 
@@ -473,7 +493,7 @@ plot_violin <- function(df, numeric_var = "person_income", cat_var = "loan_statu
 # Wyniki w odniesieniu do pytań badawczych
 
 ```{r wywołanie_violin, echo=FALSE, message=FALSE, warning=FALSE}
-plot_violin(dane_clean, numeric_var = "person_income", cat_var = "loan_status")
+plot_violin(dane_clean, numeric_var = "dochod_roczny", cat_var = "status_pozyczki")
 #W większości przypadków dochody osób biorących pożyczki są relatywnie niskie (większość skupiona w dolnym zakresie), ale jest też mała grupa osób z bardzo wysokimi dochodami — wykres pokazuje tę nierównomierność i kilka ekstremalnych wartości.
 ```
 
@@ -482,16 +502,16 @@ plot_violin(dane_clean, numeric_var = "person_income", cat_var = "loan_status")
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 for (i in 1:(ncol(dane_clean)-1)) {
   dane_col = dane_clean[[i]]
-  udzielono = dane_clean$loan_status == 1
-  nie_udzielono = dane_clean$loan_status == 0
+  udzielono = dane_clean$status_pozyczki == 1
+  nie_udzielono = dane_clean$status_pozyczki == 0
   if (class(dane_col) == "numeric") {
     p = ggplot(dane_clean) +
-      geom_boxplot(aes(x = as.factor(loan_status), y = dane_col, fill = as.factor(loan_status))) +
+      geom_boxplot(aes(x = as.factor(status_pozyczki), y = dane_col, fill = as.factor(status_pozyczki))) +
       labs(
-        title = paste("Boxplot:", colnames(dane_clean)[i], "by loan_status"),
-        x = "loan_status",
+        title = paste("Boxplot:", colnames(dane_clean)[i], "by status_pozyczki"),
+        x = "status_pozyczki",
         y = colnames(dane_clean)[i],
-        fill = "Loan status"
+        fill = "Status pożyczki"
       )
     print(p)
     
@@ -503,12 +523,14 @@ for (i in 1:(ncol(dane_clean)-1)) {
     
     
   } else {
-    prop.table(table(dane_col, dane_clean$loan_status), margin=1) %>% knitr::kable() %>% print()
+    prop.table(table(dane_col, dane_clean$status_pozyczki), margin=1) %>% knitr::kable() %>% print()
   }
 }
 
 
 ```
+
+
 
 | **Czynniki wpływające na udzielnie lub nieudzielenie pożyczki:**
 
@@ -543,7 +565,7 @@ Na podstawie poprzedniej analizy bierzemy pod uwagę czynniki wpływające na ud
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # wykres korelacji
 dane_clean %>% 
-  select(loan_status, person_income, loan_int_rate, loan_percent_income) %>% 
+  select(status_pozyczki, dochod_roczny, oprocentowanie, procent_dochodu_pozyczka) %>% 
   plot_correlation_heatmap()
 
 ```
@@ -552,7 +574,7 @@ dane_clean %>%
 options(scipen=20)
 model_logit = glm(
   data = dane_clean
-  , formula = as.factor(loan_status) ~ loan_percent_income
+  , formula = as.factor(status_pozyczki) ~ procent_dochodu_pozyczka
   , family = binomial
 )
 
@@ -564,7 +586,7 @@ knitr::kable(model_logit_summary)
 Na podstawie oszacowanego powyżej modelu regresji widzimy wizualizację wpływu relacji pożyczki do dochodu na prawdopodobieństwo uzyskania pożyczki. Przykładowo, dla klienta u którego pożyczka stanowi 40% dochodu, prawdopodobieństwo uzyskania pożyczki wynosi około 23%.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplot(dane_clean, aes(x = loan_percent_income, y = loan_status)) +
+ggplot(dane_clean, aes(x = procent_dochodu_pozyczka, y = status_pozyczki)) +
   geom_point() +
   geom_smooth(method = "glm", method.args = list(family = "binomial"))
 ```
@@ -574,7 +596,7 @@ Duże znaczenie ma relacja pożyczki do dochodu, czyli to, jaką część miesi�
 ## Hipoteza: Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, fig.show='asis'}
-ggplot(dane_clean, aes(x = person_age, y = loan_status)) +
+ggplot(dane_clean, aes(x = wiek, y = status_pozyczki)) +
   geom_point(position = position_jitter(height = 0.02), alpha = 0.4) +
   geom_smooth(
     method = "glm",
@@ -591,7 +613,7 @@ ggplot(dane_clean, aes(x = person_age, y = loan_status)) +
 ```{r}
 model_logit_2 = glm(
   data = dane_clean
-  , formula = as.factor(loan_status) ~ person_age
+  , formula = as.factor(status_pozyczki) ~ wiek
   , family = binomial
 )
 
@@ -604,7 +626,7 @@ Na podstawie wykresu oraz modelu widzimy, że wraz z wiekiem prawdopodobieństwo
 # Analiza opisowa
 
 ```{r Analiza opisowa, message=FALSE, warning=FALSE, include=FALSE}
-dane_clean <- dane_clean %>% mutate(loan_status = as.factor(loan_status))
+dane_clean <- dane_clean %>% mutate(status_pozyczki = as.factor(status_pozyczki))
 
 # 1) Przegląd ogólnyskim(dane_clean)
 
@@ -625,7 +647,7 @@ knitr::kable(t(desc_all), caption = "Statystyki opisowe — cała próba")
 
 # 3) Statystyki wg statusu pożyczki
 desc_by_status <- dane_clean %>%
-  group_by(loan_status) %>%
+  group_by(status_pozyczki) %>%
   summarise(across(where(is.numeric), list(
     n = ~sum(!is.na(.)),
     mean = ~mean(., na.rm = TRUE),
@@ -633,31 +655,31 @@ desc_by_status <- dane_clean %>%
     median = ~median(., na.rm = TRUE)
   ), .names = "{.col}_{.fn}"),
   .groups = "drop")
-knitr::kable(desc_by_status, caption = "Statystyki opisowe wg loan_status")
+knitr::kable(desc_by_status, caption = "Statystyki opisowe wg status_pozyczki")
 
 # 4) Rozkłady kategoryczne z procentami wg loan_status
 library(janitor)
-cat_vars <- c("person_gender","person_education","person_home_ownership","loan_intent","previous_loan_defaults_on_file")
+cat_vars <- c("plec","wyksztalcenie","status_mieszkaniowy","cel_pozyczki","wczesniejsze_zaleglosci")
 for (v in cat_vars) {
   tab <- dane_clean %>%
-    tabyl(.data[[v]], loan_status) %>%
+    tabyl(.data[[v]], status_pozyczki) %>%
     adorn_totals("row") %>%
     adorn_percentages("row") %>%
     adorn_pct_formatting(digits = 1) %>%
     adorn_ns()
-  print(knitr::kable(tab, caption = paste("Rozkład", v, "wg loan_status")))
+  print(knitr::kable(tab, caption = paste("Rozkład", v, "wg status_pozyczki")))
 }
 ```
 
 ```{r, Zestawienie analizy opisowej, echo=FALSE, message=FALSE, warning=FALSE}
 dane_ff <- dane_clean %>%
-  mutate(loan_status = factor(loan_status, levels = c(0, 1),
+  mutate(status_pozyczki = factor(status_pozyczki, levels = c(0, 1),
                               labels = c("Odrzucona", "Zatwierdzona")))
 
-dependent <- "loan_status"
+dependent <- "status_pozyczki"
 explanatory <- c(
-  "person_age","person_income","person_emp_exp","loan_amnt","loan_int_rate",
-  "loan_percent_income","cb_person_cred_hist_length","credit_score"
+  "wiek","dochod_roczny","doswiadczenie_zawodowe_lata","kwota_pozyczki","oprocentowanie",
+  "procent_dochodu_pozyczka","dlugosc_historii_kredytowej","scoring_kredytowy"
 )
 
 ff_table <- summary_factorlist(
@@ -669,20 +691,20 @@ ff_table <- summary_factorlist(
   add_dependent_label = TRUE
 )
 
-ff_table %>% knitr::kable(caption = "Analiza opisowa wg loan_status (z testami)")
+ff_table %>% knitr::kable(caption = "Analiza opisowa wg status_pozyczki (z testami)")
 ```
 
 ```{r, Zestawienie analizy opisowej - kategoryczne, echo=FALSE, message=FALSE, warning=FALSE}
 
 
 dane_ff <- dane_clean %>%
-  mutate(loan_status = factor(loan_status, levels = c(0, 1),
+  mutate(status_pozyczki = factor(status_pozyczki, levels = c(0, 1),
                               labels = c("Odrzucona", "Zatwierdzona")))
 
-dependent <- "loan_status"
+dependent <- "status_pozyczki"
 explanatory <- c(
-  "person_gender","person_education","person_home_ownership","loan_intent",
-  "previous_loan_defaults_on_file"
+  "plec","wyksztalcenie","status_mieszkaniowy","cel_pozyczki",
+  "wczesniejsze_zaleglosci"
 )
 
 ff_table2 <- summary_factorlist(
@@ -739,7 +761,7 @@ tbl
 ```{r}
 # Przygotowanie grupy (etykiety 0/1 -> opisowe)
 dane_psych <- dane_clean %>%
-  mutate(loan_status = factor(loan_status, levels = c(0, 1),
+  mutate(status_pozyczki = factor(status_pozyczki, levels = c(0, 1),
                               labels = c("Odrzucona", "Zatwierdzona")))
 
 # Pomocnicze funkcje, które są odporne na NA i 0 (żeby uniknąć dzielenia przez 0)
@@ -757,94 +779,94 @@ qd_pct <- function(x) {
 # Definicja „raportu” – dla kilku kluczowych zmiennych
 raport <- list(
   "Kwota pożyczki [PLN]" = list(
-    "Min"                 = ~ round(min(loan_amnt, na.rm = TRUE), 2),
-    "Max"                 = ~ round(max(loan_amnt, na.rm = TRUE), 2),
-    "Kwartyl dolny"       = ~ round(quantile(loan_amnt, 0.25, na.rm = TRUE), 2),
-    "Mediana"             = ~ round(median(loan_amnt, na.rm = TRUE), 2),
-    "Kwartyl górny"       = ~ round(quantile(loan_amnt, 0.75, na.rm = TRUE), 2),
-    "Średnia"             = ~ round(mean(loan_amnt, na.rm = TRUE), 2),
-    "Odch. std."          = ~ round(sd(loan_amnt, na.rm = TRUE), 2),
-    "IQR"                 = ~ round(IQR(loan_amnt, na.rm = TRUE), 2),
-    "Odchylenie ćwiartkowe"     = ~ round(IQR(loan_amnt, na.rm = TRUE) / 2, 2),
-    "Odch. std. w %"      = ~ round(sd_pct(loan_amnt), 2),
-    "Odch. ćwiartkowe w %"= ~ round(qd_pct(loan_amnt), 2),
-    "Skośność"            = ~ round(psych::skew(loan_amnt, na.rm = TRUE), 2),
-    "Kurtoza"             = ~ round(psych::kurtosi(loan_amnt, na.rm = TRUE), 2)
+    "Min"                 = ~ round(min(kwota_pozyczki, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(kwota_pozyczki, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(kwota_pozyczki, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(kwota_pozyczki, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(kwota_pozyczki, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(kwota_pozyczki, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(kwota_pozyczki, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(kwota_pozyczki, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(kwota_pozyczki, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(kwota_pozyczki), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(kwota_pozyczki), 2),
+    "Skośność"            = ~ round(psych::skew(kwota_pozyczki, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(kwota_pozyczki, na.rm = TRUE), 2)
   ),
   "Dochód roczny [PLN]" = list(
-    "Min"                 = ~ round(min(person_income, na.rm = TRUE), 2),
-    "Max"                 = ~ round(max(person_income, na.rm = TRUE), 2),
-    "Kwartyl dolny"       = ~ round(quantile(person_income, 0.25, na.rm = TRUE), 2),
-    "Mediana"             = ~ round(median(person_income, na.rm = TRUE), 2),
-    "Kwartyl górny"       = ~ round(quantile(person_income, 0.75, na.rm = TRUE), 2),
-    "Średnia"             = ~ round(mean(person_income, na.rm = TRUE), 2),
-    "Odch. std."          = ~ round(sd(person_income, na.rm = TRUE), 2),
-    "IQR"                 = ~ round(IQR(person_income, na.rm = TRUE), 2),
-    "Odchylenie ćwiartkowe"     = ~ round(IQR(person_income, na.rm = TRUE) / 2, 2),
-    "Odch. std. w %"      = ~ round(sd_pct(person_income), 2),
-    "Odch. ćwiartkowe w %"= ~ round(qd_pct(person_income), 2),
-    "Skośność"            = ~ round(psych::skew(person_income, na.rm = TRUE), 2),
-    "Kurtoza"             = ~ round(psych::kurtosi(person_income, na.rm = TRUE), 2)
+    "Min"                 = ~ round(min(dochod_roczny, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(dochod_roczny, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(dochod_roczny, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(dochod_roczny, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(dochod_roczny, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(dochod_roczny, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(dochod_roczny, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(dochod_roczny, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(dochod_roczny, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(dochod_roczny), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(dochod_roczny), 2),
+    "Skośność"            = ~ round(psych::skew(dochod_roczny, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(dochod_roczny, na.rm = TRUE), 2)
   ),
   "Pożyczka / dochód [%]" = list(
-    "Min"                 = ~ round(min(loan_percent_income, na.rm = TRUE), 2),
-    "Max"                 = ~ round(max(loan_percent_income, na.rm = TRUE), 2),
-    "Kwartyl dolny"       = ~ round(quantile(loan_percent_income, 0.25, na.rm = TRUE), 2),
-    "Mediana"             = ~ round(median(loan_percent_income, na.rm = TRUE), 2),
-    "Kwartyl górny"       = ~ round(quantile(loan_percent_income, 0.75, na.rm = TRUE), 2),
-    "Średnia"             = ~ round(mean(loan_percent_income, na.rm = TRUE), 2),
-    "Odch. std."          = ~ round(sd(loan_percent_income, na.rm = TRUE), 2),
-    "IQR"                 = ~ round(IQR(loan_percent_income, na.rm = TRUE), 2),
-    "Odchylenie ćwiartkowe"     = ~ round(IQR(loan_percent_income, na.rm = TRUE) / 2, 2),
-    "Odch. std. w %"      = ~ round(sd_pct(loan_percent_income), 2),
-    "Odch. ćwiartkowe w %"= ~ round(qd_pct(loan_percent_income), 2),
-    "Skośność"            = ~ round(psych::skew(loan_percent_income, na.rm = TRUE), 2),
-    "Kurtoza"             = ~ round(psych::kurtosi(loan_percent_income, na.rm = TRUE), 2)
+    "Min"                 = ~ round(min(procent_dochodu_pozyczka, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(procent_dochodu_pozyczka, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(procent_dochodu_pozyczka, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(procent_dochodu_pozyczka, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(procent_dochodu_pozyczka, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(procent_dochodu_pozyczka, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(procent_dochodu_pozyczka, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(procent_dochodu_pozyczka, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(procent_dochodu_pozyczka, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(procent_dochodu_pozyczka), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(procent_dochodu_pozyczka), 2),
+    "Skośność"            = ~ round(psych::skew(procent_dochodu_pozyczka, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(procent_dochodu_pozyczka, na.rm = TRUE), 2)
   ),
   "Oprocentowanie [%]" = list(
-    "Min"                 = ~ round(min(loan_int_rate, na.rm = TRUE), 2),
-    "Max"                 = ~ round(max(loan_int_rate, na.rm = TRUE), 2),
-    "Kwartyl dolny"       = ~ round(quantile(loan_int_rate, 0.25, na.rm = TRUE), 2),
-    "Mediana"             = ~ round(median(loan_int_rate, na.rm = TRUE), 2),
-    "Kwartyl górny"       = ~ round(quantile(loan_int_rate, 0.75, na.rm = TRUE), 2),
-    "Średnia"             = ~ round(mean(loan_int_rate, na.rm = TRUE), 2),
-    "Odch. std."          = ~ round(sd(loan_int_rate, na.rm = TRUE), 2),
-    "IQR"                 = ~ round(IQR(loan_int_rate, na.rm = TRUE), 2),
-    "Odchylenie ćwiartkowe"     = ~ round(IQR(loan_int_rate, na.rm = TRUE) / 2, 2),
-    "Odch. std. w %"      = ~ round(sd_pct(loan_int_rate), 2),
-    "Odch. ćwiartkowe w %"= ~ round(qd_pct(loan_int_rate), 2),
-    "Skośność"            = ~ round(psych::skew(loan_int_rate, na.rm = TRUE), 2),
-    "Kurtoza"             = ~ round(psych::kurtosi(loan_int_rate, na.rm = TRUE), 2)
+    "Min"                 = ~ round(min(oprocentowanie, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(oprocentowanie, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(oprocentowanie, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(oprocentowanie, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(oprocentowanie, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(oprocentowanie, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(oprocentowanie, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(oprocentowanie, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(oprocentowanie, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(oprocentowanie), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(oprocentowanie), 2),
+    "Skośność"            = ~ round(psych::skew(oprocentowanie, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(oprocentowanie, na.rm = TRUE), 2)
   ),
   "Credit score" = list(
-    "Min"                 = ~ round(min(credit_score, na.rm = TRUE), 2),
-    "Max"                 = ~ round(max(credit_score, na.rm = TRUE), 2),
-    "Kwartyl dolny"       = ~ round(quantile(credit_score, 0.25, na.rm = TRUE), 2),
-    "Mediana"             = ~ round(median(credit_score, na.rm = TRUE), 2),
-    "Kwartyl górny"       = ~ round(quantile(credit_score, 0.75, na.rm = TRUE), 2),
-    "Średnia"             = ~ round(mean(credit_score, na.rm = TRUE), 2),
-    "Odch. std."          = ~ round(sd(credit_score, na.rm = TRUE), 2),
-    "IQR"                 = ~ round(IQR(credit_score, na.rm = TRUE), 2),
-    "Odchylenie ćwiartkowe"     = ~ round(IQR(credit_score, na.rm = TRUE) / 2, 2),
-    "Odch. std. w %"      = ~ round(sd_pct(credit_score), 2),
-    "Odch. ćwiartkowe w %"= ~ round(qd_pct(credit_score), 2),
-    "Skośność"            = ~ round(psych::skew(credit_score, na.rm = TRUE), 2),
-    "Kurtoza"             = ~ round(psych::kurtosi(credit_score, na.rm = TRUE), 2)
+    "Min"                 = ~ round(min(scoring_kredytowy, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(scoring_kredytowy, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(scoring_kredytowy, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(scoring_kredytowy, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(scoring_kredytowy, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(scoring_kredytowy, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(scoring_kredytowy, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(scoring_kredytowy, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(scoring_kredytowy, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(scoring_kredytowy), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(scoring_kredytowy), 2),
+    "Skośność"            = ~ round(psych::skew(scoring_kredytowy, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(scoring_kredytowy, na.rm = TRUE), 2)
   ),
   "Wiek [lata]" = list(
-    "Min"                 = ~ round(min(person_age, na.rm = TRUE), 2),
-    "Max"                 = ~ round(max(person_age, na.rm = TRUE), 2),
-    "Kwartyl dolny"       = ~ round(quantile(person_age, 0.25, na.rm = TRUE), 2),
-    "Mediana"             = ~ round(median(person_age, na.rm = TRUE), 2),
-    "Kwartyl górny"       = ~ round(quantile(person_age, 0.75, na.rm = TRUE), 2),
-    "Średnia"             = ~ round(mean(person_age, na.rm = TRUE), 2),
-    "Odch. std."          = ~ round(sd(person_age, na.rm = TRUE), 2),
-    "IQR"                 = ~ round(IQR(person_age, na.rm = TRUE), 2),
-    "Odchylenie ćwiartkowe"     = ~ round(IQR(person_age, na.rm = TRUE) / 2, 2),
-    "Odch. std. w %"      = ~ round(sd_pct(person_age), 2),
-    "Odch. ćwiartkowe w %"= ~ round(qd_pct(person_age), 2),
-    "Skośność"            = ~ round(psych::skew(person_age, na.rm = TRUE), 2),
-    "Kurtoza"             = ~ round(psych::kurtosi(person_age, na.rm = TRUE), 2)
+    "Min"                 = ~ round(min(wiek, na.rm = TRUE), 2),
+    "Max"                 = ~ round(max(wiek, na.rm = TRUE), 2),
+    "Kwartyl dolny"       = ~ round(quantile(wiek, 0.25, na.rm = TRUE), 2),
+    "Mediana"             = ~ round(median(wiek, na.rm = TRUE), 2),
+    "Kwartyl górny"       = ~ round(quantile(wiek, 0.75, na.rm = TRUE), 2),
+    "Średnia"             = ~ round(mean(wiek, na.rm = TRUE), 2),
+    "Odch. std."          = ~ round(sd(wiek, na.rm = TRUE), 2),
+    "IQR"                 = ~ round(IQR(wiek, na.rm = TRUE), 2),
+    "Odchylenie ćwiartkowe"     = ~ round(IQR(wiek, na.rm = TRUE) / 2, 2),
+    "Odch. std. w %"      = ~ round(sd_pct(wiek), 2),
+    "Odch. ćwiartkowe w %"= ~ round(qd_pct(wiek), 2),
+    "Skośność"            = ~ round(psych::skew(wiek, na.rm = TRUE), 2),
+    "Kurtoza"             = ~ round(psych::kurtosi(wiek, na.rm = TRUE), 2)
   )
 )
 
@@ -874,7 +896,7 @@ make_summary_table_wide <- function(data, summaries, by) {
 tabela_wide <- make_summary_table_wide(
   data = dane_psych,
   summaries = raport,
-  by = "loan_status"
+  by = "status_pozyczki"
 )
 
 # INTERAKTYWNA TABELA HTML z przypiętą 1. kolumną (Statystyka)
@@ -899,3 +921,5 @@ DT::datatable(
   )
 )
 ```
+
+
