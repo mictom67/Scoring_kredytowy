@@ -1201,7 +1201,7 @@ Przeprowadzona analiza ANCOVA wykazała, że status pożyczki, dochód roczny or
 
 **Wykres interakcji między status_pozyczki, a status_mieszkaniowy na dochod_roczny**
 
-```{r Wykres_interakcji, warning=FALSE, message=FALSE}
+```{r Wykres interakcji, warning=FALSE, message=FALSE}
 outcome_var <- "dochod_roczny"
 group_var   <- "status_pozyczki"
 housing_var <- "status_mieszkaniowy"
@@ -1210,8 +1210,10 @@ d <- dane_clean %>%
   select(all_of(c(outcome_var, group_var, housing_var))) %>%
   filter(!is.na(.data[[outcome_var]]), !is.na(.data[[group_var]]), !is.na(.data[[housing_var]])) %>%
   mutate(
-    status_clean = factor(as.character(.data[[group_var]]),
-                          levels = c("0","1"), labels = c("Odrzucona","Zatwierdzona")),
+    # 0/1 -> czytelne etykiety
+    status_clean = factor(as.character(.data[[group_var]]), levels = c("0","1"),
+                          labels = c("Odrzucona","Zatwierdzona")),
+    # bezpieczne mapowanie statusu mieszkaniowego (uwzględnia różne zapisy)
     tmp_h = str_to_lower(str_trim(as.character(.data[[housing_var]]))),
     housing_clean = case_when(
       tmp_h %in% c("rent","wynajem") ~ "Wynajem",
@@ -1220,22 +1222,23 @@ d <- dane_clean %>%
       tmp_h %in% c("other","inne") ~ "Inne",
       TRUE ~ str_to_title(tmp_h)
     ),
-    housing_clean = factor(housing_clean, levels = unique(c("Wynajem","Własność","Hipoteka","Inne", as.character(housing_clean))))
+    housing_clean = factor(housing_clean, levels = c("Wynajem","Własność","Hipoteka","Inne"))
   ) %>%
   select(-tmp_h)
 
 cols <- c("Odrzucona" = "red", "Zatwierdzona" = "blue")
-
-ggplot(d, aes(x = housing_clean, y = .data[[outcome_var]], group = status_clean, colour = status_clean, fill = status_clean)) +
-  geom_jitter(position = position_jitter(width = 0.12, height = 0), alpha = 0.18, size = 0.6, show.legend = FALSE) +
-  stat_summary(fun = mean, geom = "line", size = 2.0, position = position_dodge(width = 0.35)) +
-  stat_summary(fun = mean, geom = "point", shape = 21, colour = "black", size = 4, stroke = 0.9, position = position_dodge(width = 0.35)) +
-  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.10, size = 0.9, position = position_dodge(width = 0.35)) +
+ggplot(d, aes(x = housing_clean, y = .data[[outcome_var]], group = status_clean, colour = status_clean)) +
+  geom_jitter(position = position_jitter(width = 0.12, height = 0), alpha = 0.25, size = 0.7, show.legend = FALSE) +
+  stat_summary(fun = mean, geom = "line", size = 1.8, position = position_dodge(width = 0.25)) +
+  stat_summary(fun = mean, geom = "point", size = 4, shape = 21, colour = "black",
+               aes(fill = status_clean), position = position_dodge(width = 0.25)) +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.12, size = 0.9, position = position_dodge(width = 0.25)) +
   scale_colour_manual(name = "Status pożyczki", values = cols) +
   scale_fill_manual(name = "Status pożyczki", values = cols) +
   guides(colour = FALSE, fill = guide_legend(override.aes = list(shape = 21, size = 4, stroke = 0.9))) +
   scale_y_continuous(labels = comma) +
-  labs(x = "Status mieszkaniowy", y = "Średnia z dochodu rocznego",
+  coord_cartesian(ylim = c(0, 1e6)) +    # <-- tutaj ograniczenie osi Y do 1 000 000
+  labs(x = "Status mieszkaniowy", y = "Średni dochód roczny",
        title = "Interakcja: dochod_roczny ~ status_pozyczki * status_mieszkaniowy") +
   theme_minimal(base_size = 13) +
   theme(
@@ -1247,9 +1250,11 @@ ggplot(d, aes(x = housing_clean, y = .data[[outcome_var]], group = status_clean,
   )
 ```
 
+Wykres pokazuje średnie roczne dochody w podziale na status mieszkaniowy i status pożyczki: linie dla grup "Odrzucona" i "Zatwierdzona" są blisko siebie we wszystkich kategoriach, co sugeruje brak wyraźnej interakcji - dochód nie różnicuje istotnie efektu zatwierdzenia pożyczki między wynajmem, własnością czy hipoteką.
+
 **Test Kruskala-Wallisa**
 
-```{r test_kruskala_wallisa, warning=FALSE, message=FALSE, results='asis'}
+```{r test kruskala wallisa, warning=FALSE, message=FALSE, results='asis'}
 outcome_var <- "dochod_roczny"        # zmienna numeryczna (np. GPA)
 group_var   <- "status_pozyczki"  # zmienna kategoryczna (grupy do porównania)
 df_kw <- dane_clean %>%
@@ -1268,6 +1273,11 @@ if (!is.na(kw_res$p) && kw_res$p < 0.05) {
   message("Kruskal-Wallis: p >= 0.05 — post-hoc Dunn pominięto.")
 }
 ```
+
+Test Kruskal–Wallisa wykazał istotną różnicę w rozkładzie dochodu rocznego między grupami (χ² ≈ 3402.37, df = 1, p < 0.001).
+Post‑hoc Dunn potwierdza, że różnica dotyczy pary 0 vs 1 (stat ≈ 58.3, p_FDR < 0.001); z tabeli opisowej wynika, że grupa „Zatwierdzona” ma wyraźnie wyższe wartości dochodu (mediana ≈ 72 928, średnia ≈ 86 157) niż grupa „Odrzucona” (mediana ≈ 50 629, średnia ≈ 59 886).
+
+**Porównanie % pożyczki względem wcześniejszych zaległości**
 
 ```{r Porównanie % pożyczki względem wcześniejszych zaległości,}
 d <- dane_clean %>%
@@ -1291,3 +1301,6 @@ ggplot(d, aes(x = group, y = outcome, fill = group)) +
   labs(x = "Wcześniejsze zaległości", y = "Kwota pożyczki jako % dochodu", title = "Porównanie % pożyczki względem wcześniejszych zaległości") +
   theme_minimal()
 ```
+
+Wykres pokazuje rozkład udziału kwoty pożyczki w dochodzie (w %) dla dwóch grup: bez wcześniejszych zaległości („Nie”) i z wcześniejszymi zaległościami („Tak”). Czerwone kropki to trimmed mean - ~14.9% dla grupy „Nie” i ~11.6% dla „Tak”, czyli osoby bez wcześniejszych zaległości biorą przeciętnie nieco większe pożyczki w stosunku do dochodu.
+Jednocześnie rozkłady silnie się pokrywają i obie mają sporo obserwacji w przedziale ~10–30% oraz pojedyncze wartości skrajne powyżej ~50%.
