@@ -1279,27 +1279,27 @@ Post‑hoc Dunn potwierdza, że różnica dotyczy pary 0 vs 1 (stat ≈ 58.3, p_
 
 **Porównanie % pożyczki względem wcześniejszych zaległości**
 
-```{r Porównanie % pożyczki względem wcześniejszych zaległości,}
+```{r Porownanie proc pozyczki wzgledem wczesniejszych zaleglosci, echo=FALSE}
+# Przygotowanie danych (przykład zgodny z Twoim wcześniejszym kodem)
 d <- dane_clean %>%
   filter(!is.na(procent_dochodu_pozyczka), !is.na(wczesniejsze_zaleglosci)) %>%
   mutate(
-    outcome = 100 * procent_dochodu_pozyczka,                                           # w %
-    group = ifelse(as.character(wczesniejsze_zaleglosci) %in%
-                   c("1","TRUE","Tak","tak","TRUE"), "Tak", "Nie"),
+    outcome = 100 * procent_dochodu_pozyczka,
+    group = ifelse(as.character(wczesniejsze_zaleglosci) %in% c("1","TRUE","Tak","tak"), "Tak", "Nie"),
     group = factor(group, levels = c("Nie","Tak"))
   )
 
-stats <- d %>% group_by(group) %>% summarise(trimmed = mean(outcome, trim = 0.1), .groups = "drop")
-
-ggplot(d, aes(x = group, y = outcome, fill = group)) +
+# prosty wykres
+p <- ggplot(d, aes(x = group, y = outcome, fill = group)) +
   geom_violin(trim = FALSE, colour = "black", alpha = 0.15) +
   geom_boxplot(width = 0.12, outlier.shape = NA, alpha = 0.4) +
   geom_jitter(width = 0.08, size = 1, alpha = 0.6) +
-  geom_point(data = stats, aes(x = group, y = trimmed), colour = "darkred", size = 3) +
-  geom_text(data = stats, aes(x = group, y = trimmed, label = sprintf("%.1f", trimmed)),
-            vjust = -1.2, colour = "darkred", size = 3) +
-  labs(x = "Wcześniejsze zaległości", y = "Kwota pożyczki jako % dochodu", title = "Porównanie % pożyczki względem wcześniejszych zaległości") +
+  stat_summary(fun = mean, geom = "point", colour = "darkred", size = 3) +
+  labs(x = "Wcześniejsze zaległości", y = "Kwota pożyczki jako % dochodu",
+       title = "Porównanie % pożyczki względem wcześniejszych zaległości") +
   theme_minimal()
+
+print(p)
 ```
 
 Wykres pokazuje rozkład udziału kwoty pożyczki w dochodzie (w %) dla dwóch grup: bez wcześniejszych zaległości („Nie”) i z wcześniejszymi zaległościami („Tak”). Czerwone kropki to trimmed mean - ~14.9% dla grupy „Nie” i ~11.6% dla „Tak”, czyli osoby bez wcześniejszych zaległości biorą przeciętnie nieco większe pożyczki w stosunku do dochodu.
