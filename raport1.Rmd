@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 #pobieranie i ładowanie bibliotek bez potrzeby instalacji
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
-  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra, rstatix, forcats, pROC, plotly, ggeffects, effectsize, ggstatsplot, purrr
+  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra, rstatix, forcats, pROC, plotly, ggeffects, effectsize, ggstatsplot, purrr, car
 )
 ```
 
@@ -1041,5 +1041,160 @@ DT::datatable(
 ```
 
 
-## Wnioskowanie statystyczne
+# Wnioskowanie statystyczne
 
+**Test t Studenta — porównanie średnich pomiędzy grupami**
+
+Poniżej porównujemy średnie wybranych zmiennych numerycznych pomiędzy osobami, którym przyznano pożyczkę (`status_pozyczki = 1`) a tymi, którym odmówiono (`status_pozyczki = 0`). Dla każdej zmiennej numerycznej wykonujemy test t Studenta.
+
+```{r test-t-studenta, warning=FALSE, message=FALSE, results='asis'}
+num_vars <- c("wiek", "dochod_roczny", "doswiadczenie_zawodowe_lata",
+              "kwota_pozyczki", "oprocentowanie", "procent_dochodu_pozyczka",
+              "dlugosc_historii_kredytowej", "scoring_kredytowy")
+num_vars <- intersect(num_vars, names(dane_clean))
+
+# Średnie w obu grupach:
+srednie <- dane_clean %>%
+  select(status_pozyczki, all_of(num_vars)) %>%
+  pivot_longer(cols = num_vars, names_to = "variable") %>%
+  group_by(variable, status_pozyczki) %>%
+  summarise(srednia = mean(value, na.rm=TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = status_pozyczki, values_from = srednia, names_prefix = "srednia_")
+
+# Testy t
+wyniki_t <- num_vars %>%
+  purrr::map_dfr(function(v) {
+    dane_clean %>%
+      select(status_pozyczki, zmienna = !!sym(v)) %>%
+      filter(!is.na(zmienna) & !is.na(status_pozyczki)) %>%
+      t_test(zmienna ~ status_pozyczki, alternative = "two.sided", var.equal = FALSE) %>%
+      mutate(variable = v)
+  })
+
+etykiety <- tibble::tibble(
+  variable = c("wiek", "dochod_roczny", "doswiadczenie_zawodowe_lata",
+               "kwota_pozyczki", "oprocentowanie", "procent_dochodu_pozyczka",
+               "dlugosc_historii_kredytowej", "scoring_kredytowy"),
+  label = c("Wiek", "Dochód roczny", "Doświadczenie zawodowe (lata)",
+            "Kwota pożyczki", "Oprocentowanie (%)", "Pożyczka/dochod (%)",
+            "Długość historii kredytowej [lata]", "Scoring kredytowy")
+)
+
+tabela <- wyniki_t %>%
+  left_join(etykiety, by = "variable") %>%
+  left_join(srednie,  by = "variable") %>%
+  select(label, variable, srednia_0, srednia_1, statistic, p) %>%
+  rename(
+    "Zmienna" = label,
+    "Kod" = variable,
+    "Średnia: Odrzucona" = srednia_0,
+    "Średnia: Zatwierdzona" = srednia_1,
+    "Statystyka t" = statistic,
+    "Wartość p" = p
+  ) %>%
+  mutate(
+    across(`Średnia: Odrzucona`:`Statystyka t`, ~round(., 3)),
+    Wynik = ifelse(`Wartość p` < 0.05, "istotna", "nieistotna"),
+    `Wartość p` = scales::pvalue(`Wartość p`)
+  )
+
+tabela %>%
+  kable(
+    caption = "Test t Studenta (Welcha) — porównanie średnich według status_pozyczki",
+    align = "c"
+  ) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover")) %>%
+  row_spec(0, bold = TRUE)
+```
+
+Na podstawie wyników testu t Studenta można stwierdzić, że pożyczkę najłatwiej uzyskują osoby, które charakteryzują się wyższym rocznym dochodem, wnioskują o niższą kwotę pożyczki oraz deklarują niższe oprocentowanie i stosunkowo mniejsze obciążenie dochodu ratą kredytową. Innymi słowy, banki czy instytucje udzielające pożyczek zdecydowanie preferują wnioskodawców o ustabilizowanej sytuacji finansowej, dla których potencjalna ratowna pożyczka nie stanowi zbyt dużej części rocznych zarobków – to minimalizuje ryzyko kredytowe z perspektywy pożyczkodawcy.
+
+**Test chi-kwadrat — porównanie zmiennych kategorycznych względem status_pozyczki**
+
+```{r test-chi2-tabela, results='asis', warning=FALSE, message=FALSE}
+# Zamienne kategoryczne do sprawdzenia
+cat_vars <- c("plec", "wyksztalcenie", "status_mieszkaniowy", "cel_pozyczki", "wczesniejsze_zaleglosci")
+cat_vars <- intersect(cat_vars, names(dane_clean))
+
+# Funkcja do testu chi-kwadrat i ładnego upakowania wyniku do ramki danych
+chi2_stat_tidy <- function(var) {
+  tbl <- table(dane_clean[[var]], dane_clean$status_pozyczki)
+  test <- suppressWarnings(chisq.test(tbl))
+  tibble::tibble(
+    Zmienna = var,
+    `Statystyka chi²` = round(as.numeric(test$statistic), 3),
+    `df` = as.numeric(test$parameter),
+    `Wartość p` = test$p.value,
+    Istotność = ifelse(test$p.value < 0.05, "istotna", "nieistotna")
+  )
+}
+
+# Wyniki dla wszystkich zmiennych
+chi2_tabela <- bind_rows(lapply(cat_vars, chi2_stat_tidy))
+
+# ładna etykieta po polsku
+etykiety <- tibble::tibble(
+  Zmienna = c("plec", "wyksztalcenie", "status_mieszkaniowy", "cel_pozyczki", "wczesniejsze_zaleglosci"),
+  Etykieta = c("Płeć", "Wykształcenie", "Status mieszkaniowy", "Cel pożyczki", "Wcześniejsze zaległości")
+)
+
+chi2_tabela <- chi2_tabela %>%
+  left_join(etykiety, by = "Zmienna") %>%
+  select(Etykieta, Zmienna, `Statystyka chi²`, df, `Wartość p`, Istotność) %>%
+  rename("Zm. w bazie" = Zmienna)
+
+chi2_tabela %>%
+  mutate(`Wartość p` = scales::pvalue(`Wartość p`)) %>%
+  kable(
+    caption = "Test chi-kwadrat — zależność zmiennych kategorycznych względem statusu pożyczki",
+    align = "c"
+  ) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"), font_size = 14) %>%
+  row_spec(0, bold = TRUE)
+```
+
+Na podstawie przeprowadzonych testów chi-kwadrat widać, że status mieszkaniowy, cel pożyczki oraz wcześniejsze zaległości są istotnie powiązane ze statusem przyznania pożyczki. Oznacza to, że te cechy mają realny wpływ na decyzję kredytową – instytucje finansowe przywiązują dużą wagę do tego, czy klient miał wcześniej zaległości, jaki ma status mieszkaniowy oraz na jaki cel zaciąga pożyczkę.
+
+Natomiast płeć i wykształcenie nie wykazały istotnego statystycznie związku z decyzją o udzieleniu kredytu, więc te czynniki nie mają większego znaczenia w analizowanym zbiorze danych.
+
+O przyznaniu pożyczki decydowały przede wszystkim czynniki związane ze stabilnością mieszkaniową, historią zadłużenia klienta i przeznaczeniem pożyczki. Aspekty demograficzne, takie jak płeć czy poziom wykształcenia, nie odgrywały tu istotnej roli.
+
+**Analiza ANCOVA — wpływ statusu pożyczki na kwotę przy kontroli dochodu i wieku**
+
+```{r ancova_kwota_pozyczki, warning=FALSE, message=FALSE, results='asis'}
+# Przygotowanie danych: tylko kompletny przypadki dla wybranych zmiennych
+dancova <- dane_clean %>% 
+  select(status_pozyczki, kwota_pozyczki, dochod_roczny, wiek) %>%
+  filter(!is.na(status_pozyczki), !is.na(kwota_pozyczki), !is.na(dochod_roczny), !is.na(wiek))
+
+# ANCOVA: model liniowy
+ancova_model <- lm(kwota_pozyczki ~ status_pozyczki + dochod_roczny + wiek, data = dancova)
+
+# Wyciągnij efekty/istotności
+ancova_results <- car::Anova(ancova_model, type = 2) %>% broom::tidy()
+ancova_results$term[ancova_results$term == "status_pozyczki"] <- "Status pożyczki"
+ancova_results$term[ancova_results$term == "dochod_roczny"]  <- "Dochód roczny"
+ancova_results$term[ancova_results$term == "wiek"]            <- "Wiek"
+
+# Formatowanie tabeli
+ancova_results %>%
+  select(term, df, statistic, p.value) %>%
+  rename(
+    "Czynnik" = term,
+    "df" = df,
+    "Statystyka F" = statistic,
+    "Wartość p" = p.value
+  ) %>%
+  mutate(
+    `Wartość p` = scales::pvalue(`Wartość p`),
+    Istotność = ifelse(`Wartość p` < 0.05, "istotna", "nieistotna")
+  ) %>%
+  kable(
+    caption = "ANCOVA – wpływ statusu pożyczki na kwotę pożyczki przy kontroli dochodu i wieku",
+    align = "c"
+  ) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"), font_size = 14) %>%
+  row_spec(0, bold = TRUE)
+```
+
+Przeprowadzona analiza ANCOVA wykazała, że status pożyczki, dochód roczny oraz wiek mają istotny wpływ na kwotę pożyczki, nawet po wzajemnym skorygowaniu ich wpływu. Oznacza to, że średnia kwota udzielanej pożyczki znacząco różni się w zależności od tego, czy wniosek został zatwierdzony czy odrzucony, a także rośnie wraz z wyższym dochodem oraz – w mniejszym stopniu – wraz z wiekiem klienta. Wszystkie te czynniki okazały się wysoce istotne statystycznie (p < 0.001), co potwierdza, że są one kluczowymi determinantami wysokości udzielanej pożyczki i powinny być uwzględniane w procesie oceny wniosków kredytowych.
