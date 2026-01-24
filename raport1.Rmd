@@ -1237,7 +1237,7 @@ ggplot(d, aes(x = housing_clean, y = .data[[outcome_var]], group = status_clean,
   scale_fill_manual(name = "Status pożyczki", values = cols) +
   guides(colour = FALSE, fill = guide_legend(override.aes = list(shape = 21, size = 4, stroke = 0.9))) +
   scale_y_continuous(labels = comma) +
-  coord_cartesian(ylim = c(0, 1e6)) +    # <-- tutaj ograniczenie osi Y do 1 000 000
+  coord_cartesian(ylim = c(0, 500000)) +    # <-- tutaj ograniczenie osi Y do 500 000
   labs(x = "Status mieszkaniowy", y = "Średni dochód roczny",
        title = "Interakcja: dochod_roczny ~ status_pozyczki * status_mieszkaniowy") +
   theme_minimal(base_size = 13) +
