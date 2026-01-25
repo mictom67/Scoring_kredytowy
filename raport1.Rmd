@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 #pobieranie i ładowanie bibliotek bez potrzeby instalacji
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
-  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra, rstatix, forcats, pROC, plotly, ggeffects, effectsize, ggstatsplot, purrr, car
+  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra, rstatix, forcats, pROC, plotly, ggeffects, effectsize, ggstatsplot, purrr, car, stringr
 )
 ```
 
@@ -172,13 +172,14 @@ gg_miss_upset(dane)
 
 ### Wizualizacja braków danych w formie mapy cieplnej
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-vis_miss(dane)
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.height=8, fig.width=10}
+vis_miss(dane) +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust = 1, size = 12))
 ```
 
 ### Wzorzec braków danych
 
-```{r szachownica, echo=FALSE, message=FALSE, warning=FALSE,  fig.width=20, fig.height=20}
+```{r szachownica, echo=FALSE, message=FALSE, warning=FALSE,  fig.width=8, fig.height=11}
 p <- missing_pattern(dane) + theme(axis.text.x = element_text(angle = 45, vjust = 0.1,
                                                          hjust = 1, size = 16))
 
@@ -357,34 +358,45 @@ plot_pareto <- function(df, var = "loan_amnt", top_n = 200, unit = "") {
 ## Wykres Pareto dla kwoty pożyczki
 
 ```{r wywołanie_pareto, echo=FALSE, message=FALSE, warning=FALSE}
-plot_pareto(dane_clean, var = "kwota_pozyczki", top_n = 10000, unit = "PLN") + 
+plot_pareto(dane_clean, var = "kwota_pozyczki", top_n = 10000) + 
   ggtitle("Wykres Pareto dla kwoty pożyczki (kwota_pozyczki)")
 ```
 
-```{r wykresy-histogram/boxplot-Paweł, echo=FALSE, message=FALSE, warning=FALSE}
-plot_distributions <- function(df, var = "kwota_pozyczki", by = "status_pozyczki", log_scale = TRUE) {
-  df2 <- df %>% filter(!is.na(.data[[var]]))
-  df2 <- df2 %>% mutate(!!by := as.factor(.data[[by]]))
-  p_hist <- ggplot(df2, aes_string(x = var, fill = by, group = by)) +
-    geom_histogram(position = "identity", alpha = 0.45, bins = 50, color = NA) +
-    theme_minimal() +
-    labs(title = paste("Histogram:", var, "by", by), x = var, y = "Count")
-  if (log_scale) p_hist <- p_hist + scale_x_log10(labels = scales::comma)
-  p_box <- ggplot(df2, aes_string(x = by, y = var, fill = by)) +
-    geom_boxplot(outlier.alpha = 0.3) +
-    theme_minimal() +
-    labs(title = paste("Boxplot:", var, "by", by), x = by, y = var)
-  if (log_scale) p_box <- p_box + scale_y_log10(labels = scales::comma)
-  combined <- p_hist / p_box
-  combined
-}
-```
+Wykres Pareto pokazuje sumę udzielonych pożyczek, zaczynając od największych kwot i stopniowo dodając coraz mniejsze. Każdy słupek to kolejna pożyczka, a czerwona linia pokazuje, jak narasta suma wszystkich kwot pożyczek. Z wykresu widać, że niewielka liczba największych pożyczek odpowiada za znaczną część całkowitej wartości portfela – większość osób wnioskuje o znacznie niższe kwoty.
 
 ## Rozkład kwoty pożyczki w zależności od statusu pożyczki
 
-```{r wywołanie_rozkład, echo=FALSE, message=FALSE, warning=FALSE}
+```{r wykresy-histogram/boxplot-Paweł, echo=FALSE, message=FALSE, warning=FALSE}
+plot_distributions <- function(df, var = "kwota_pozyczki", by = "status_pozyczki", log_scale = TRUE, ymin = 500) {
+  df2 <- df %>% filter(!is.na(.data[[var]]))
+  df2 <- df2 %>% mutate(!!by := as.factor(.data[[by]]))
+  colors <- c("0" = "#fb8072", "1" = "#80b1d3")
+  
+  # Histogram - nakładanie się kolorów (alpha), position = "identity"
+  p_hist <- ggplot(df2, aes_string(x = var, fill = by)) +
+    geom_histogram(position = "identity", alpha = 0.55, bins = 50, color = NA) +
+    scale_fill_manual(values = colors, name = by) +
+    theme_minimal() +
+    labs(title = paste("Histogram:", var, "by", by), x = var, y = "Count")
+  if (log_scale) p_hist <- p_hist + scale_x_log10(labels = comma)
+  
+  # Boxplot - skala log10, granica dolna dla czytelności
+  p_box <- ggplot(df2, aes_string(x = by, y = var, fill = by)) +
+    geom_boxplot(outlier.alpha = 0.3) +
+    scale_fill_manual(values = colors, name = by) +
+    theme_minimal() +
+    labs(title = paste("Boxplot:", var, "by", by), x = by, y = var)
+  if (log_scale) p_box <- p_box + scale_y_log10(labels = comma, limits = c(ymin, NA), oob = scales::oob_keep)
+  
+  combined <- p_hist / p_box
+  print(combined)
+}
+
+# Przykładowe wywołanie:
 plot_distributions(dane_clean, var = "kwota_pozyczki", by = "status_pozyczki")
 ```
+
+Rozkład kwoty pożyczki jest bardzo podobny zarówno wśród wniosków zaakceptowanych, jak i odrzuconych – w obu grupach większość pożyczek dotyczy kwot od kilku do kilkunastu tysięcy złotych. Mediany oraz zakresy typowych wartości są zbliżone, co widać na boxplotach. Zarówno w grupie zatwierdzonych, jak i odrzuconych wniosków, pojawiają się pojedyncze, bardzo wysokie kwoty jako wartości odstające. Decyzja o przyznaniu lub odrzuceniu pożyczki nie jest więc silnie związana z jej wysokością.
 
 ```{r wykresy-ECDF-Paweł, echo=FALSE, message=FALSE, warning=FALSE}
 plot_ecdf <- function(df, var = "kwota_pozyczki", log_scale = TRUE) {
@@ -402,8 +414,9 @@ plot_ecdf <- function(df, var = "kwota_pozyczki", log_scale = TRUE) {
 
 ```{r wywołanie_ECDF, echo=FALSE, message=FALSE, warning=FALSE}
 plot_ecdf(dane_clean, var = "kwota_pozyczki")
-#Większość pożyczek koncentruje się poniżej 10 000 PLN (stroma część krzywej), natomiast wartości powyżej 30 000 PLN stanowią jedynie niewielki odsetek obserwacji (krzywa zbliża się do 1 dopiero na końcu).
 ```
+
+Większość pożyczek koncentruje się poniżej 10 000 PLN (stroma część krzywej), natomiast wartości powyżej 30 000 PLN stanowią jedynie niewielki odsetek obserwacji (krzywa zbliża się do 1 dopiero na końcu).
 
 ```{r wykresy_heatmapa_korelacji_Paweł, echo=FALSE, message=FALSE, warning=FALSE}
 plot_correlation_heatmap <- function(df,
@@ -476,27 +489,81 @@ plot_correlation_heatmap <- function(df,
 ```{r wywołanie_heatmapy, echo=FALSE, message=FALSE, warning=FALSE}
 plot_correlation_heatmap(dane_clean) 
 ```
+
+Mapa korelacji pokazuje zależności pomiędzy zmiennymi numerycznymi w zbiorze danych. Zdecydowana większość korelacji jest słaba lub umiarkowana, a tylko nieliczne pary zmiennych wykazują silniejszy związek.
+
+Najwyższe korelacje obserwujemy pomiędzy:
+Wiek a długość historii kredytowej (r = 0.81) — im ktoś starszy, tym dłuższą ma historię kredytową, co jest intuicyjne.
+Doświadczenie zawodowe lata i wiek (r = 0.75) — starsze osoby mają też więcej lat doświadczenia.
+Kwota pożyczki a procent_dochodu_pozyczka (r = 0.64) — wyższa kwota pożyczki wiąże się z większym udziałem raty w dochodzie.
+
 # Wyniki w odniesieniu do pytań badawczych
 ```{r wykresy-violin-boxplot-Paweł, echo=FALSE, warning=FALSE}
-plot_violin <- function(df, numeric_var = "dochod_roczny", cat_var = "status_pozyczki", log_scale = TRUE) {
+plot_violin <- function(df, numeric_var = "dochod_roczny", cat_var = "status_pozyczki") {
   df2 <- df %>% filter(!is.na(.data[[numeric_var]]))
+  # Ustawienie status_pozyczki jako factor z kontrolą kolejności i nazw
+  if (!is.factor(df2[[cat_var]])) {
+    df2[[cat_var]] <- as.factor(df2[[cat_var]])
+  }
+  # Wyznacz kolory jeśli są dwie grupy
+  nlevels <- length(unique(df2[[cat_var]]))
+  palette <- c("#fb8072", "#80b1d3") # możesz zmienić wedle uznania!
+  palette <- palette[1:nlevels]
+  # Tworzymy wykres
   violin_boxplot <- ggplot(df2, aes_string(x = cat_var, y = numeric_var, fill = cat_var)) +
-    geom_violin(trim = TRUE, alpha = 0.6) +
-    geom_boxplot(width = 0.1, outlier.alpha = 0.2) +
-    theme_minimal() +
-    labs(title = paste("Violin + boxplot:", numeric_var, "by", cat_var), x = cat_var, y = numeric_var)
-  if (log_scale) violin_boxplot <- violin_boxplot + scale_y_log10(labels = comma)
+    geom_violin(trim = TRUE, alpha = 0.6, color = NA) +
+    geom_boxplot(width = 0.1, outlier.alpha = 0.2, color = "black", alpha = 1) +
+    scale_y_log10(labels = comma) +
+    scale_fill_manual(values = palette, name = cat_var) +
+    theme_minimal(base_size = 14) +
+    labs(
+      title = paste0("Violin + boxplot: ", numeric_var, " by ", cat_var),
+      x = cat_var,
+      y = numeric_var
+    ) +
+    theme(
+      legend.title = element_text(face = "bold"),
+      legend.position = "right"
+    )
   violin_boxplot
 }
+
+# Wywołanie:
 plot_violin(dane_clean, numeric_var = "dochod_roczny", cat_var = "status_pozyczki")
-#W większości przypadków dochody osób biorących pożyczki są relatywnie niskie (większość skupiona w dolnym zakresie), ale jest też mała grupa osób z bardzo wysokimi dochodami — wykres pokazuje tę nierównomierność i kilka ekstremalnych wartości.
 ```
+
+W większości przypadków dochody osób biorących pożyczki są relatywnie niskie (większość skupiona w dolnym zakresie), ale jest też mała grupa osób z bardzo wysokimi dochodami — wykres pokazuje tę nierównomierność i kilka ekstremalnych wartości.
 
 ## Pytanie: Jakie są główne różnice w profilu (np. dochód, wiek, stan cywilny) między klientami, którzy otrzymali pozytywną ocenę, a tymi, którzy otrzymali negatywną?
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Upewnij się, że status_pozyczki istnieje
-stopifnot("status_pozyczki" %in% names(dane_clean))
+# Słowniki tłumaczeń
+lvl_dict <- c(
+  Male = "Mężczyzna",
+  Female = "Kobieta",
+  Associate = "Policealne",
+  Bachelor = "Licencjat",
+  Doctorate = "Doktorat",
+  `High School` = "Szkoła średnia",
+  Master = "Magister",
+  Mortgage = "Hipoteka",
+  Other = "Inny",
+  Own = "Własność",
+  Rent = "Najem",
+  Debtconsolidation = "Spłata zadłużenia",
+  Education = "Edukacja",
+  Homeimprovement = "Remont",
+  Medical = "Leczenie",
+  Personal = "Wydatki osobiste",
+  Venture = "Inwestycja"
+)
+
+var_dict <- c(
+  plec = "Płeć",
+  wyksztalcenie = "Wykształcenie",
+  status_mieszkaniowy = "Status mieszkaniowy",
+  cel_pozyczki = "Cel pożyczki"
+)
 
 # Lista dozwolonych kolumn
 allowed_cols <- c(
@@ -516,98 +583,20 @@ allowed_cols <- c(
   "status_pozyczki"
 )
 
-# Bierzemy tylko te kolumny, które faktycznie istnieją w danych
+# Bierzemy tylko istniejące kolumny
 allowed_cols <- intersect(allowed_cols, names(dane_clean))
+cat_cols <- setdiff(allowed_cols, c(
+  allowed_cols[sapply(dane_clean[allowed_cols], is.numeric)],
+  "status_pozyczki"
+))
 
-# Funkcja skracająca i łamiąca tytuł osi Y na krótsze segmenty (dla lepszej czytelności pionowej)
-wrap_label <- function(s) {
-  s <- gsub("_", " ", s)      # zamiana podkreślników na spacje
-  s <- gsub(" ", "<br>", s)   # łamanie w miejscach spacji
-  s
-}
-
-# Rozdzielenie na numeryczne i nienumeryczne w obrębie dozwolonych kolumn
-numeric_cols <- allowed_cols[sapply(dane_clean[allowed_cols], is.numeric)]
-numeric_cols <- setdiff(numeric_cols, "status_pozyczki")
-cat_cols <- setdiff(allowed_cols, c(numeric_cols, "status_pozyczki"))
-
-# Jeśli są kolumny numeryczne, zbuduj jeden interaktywny obiekt z wykresami
-if (length(numeric_cols) > 0) {
-  ggplots <- lapply(numeric_cols, function(col) {
-    ggplot(dane_clean, aes(
-      x = as.factor(status_pozyczki),
-      y = .data[[col]],
-      fill = as.factor(status_pozyczki)
-    )) +
-      geom_boxplot() +
-      labs(
-        title = col,                          # krótki, czytelny tytuł panelu
-        x = "status_pozyczki",
-        y = wrap_label(col),                  # pionowa oś Y łamana na segmenty
-        fill = "Status pożyczki"
-      ) +
-      theme_minimal(base_size = 12) +
-      theme(
-        legend.position = "none",
-        plot.title = element_text(face = "bold", size = 12),
-        plot.margin = margin(t = 6, r = 6, b = 6, l = 24)  # dodatkowy lewy margines pod tytuł osi Y
-      )
-  })
-
-  plotly_plots <- lapply(ggplots, ggplotly)
-
-  n <- length(plotly_plots)
-  ncols <- min(3, max(1, ceiling(sqrt(n))))
-  nrows <- ceiling(n / ncols)
-
-  combined_plot <- subplot(
-    plotly_plots,
-    nrows = nrows,
-    shareX = TRUE,
-    titleX = TRUE,
-    titleY = TRUE,
-    margin = 0.08   # większy odstęp między panelami
-  ) %>%
-    layout(
-      dragmode = "zoom",
-      title = list(
-        text = "Wykresy pudełkowe dla wybranych kolumn numerycznych (kliknij i zaznacz, aby powiększyć; podwójne kliknięcie resetuje)"
-      ),
-      margin = list(l = 60, r = 30, t = 60, b = 40)  # zwiększone marginesy całej figury
-    ) %>%
-    config(
-      responsive = TRUE,
-      displaylogo = FALSE,
-      modeBarButtonsToAdd = c("zoom2d", "autoscale", "resetScale2d"),
-      toImageButtonOptions = list(format = "png", filename = "wykresy_boxplot", height = 900, width = 1400)
-    )
-
-  # Ustaw większy odstęp tytułu osi od etykiet i włącz automargins dla wszystkich osi
-  y_ids <- paste0("yaxis", c("", 2:n))
-  x_ids <- paste0("xaxis", c("", 2:n))
-
-  y_defs <- setNames(
-    lapply(seq_len(n), function(i) list(title = list(standoff = 30, font = list(size = 11)), automargin = TRUE)),
-    y_ids
-  )
-  x_defs <- setNames(
-    lapply(seq_len(n), function(i) list(title = list(standoff = 12, font = list(size = 11)), automargin = TRUE)),
-    x_ids
-  )
-
-  combined_plot <- do.call(plotly::layout, c(list(p = combined_plot), y_defs, x_defs))
-
-  combined_plot
-}
-
-# Zbiorcza tabela proporcji dla kolumn nienumerycznych (tylko z listy dozwolonych)
 if (length(cat_cols) > 0) {
   cat_tables <- lapply(cat_cols, function(col) {
     pt <- prop.table(table(dane_clean[[col]], dane_clean$status_pozyczki), margin = 1)
     as.data.frame(pt) %>%
       rename(level = Var1, status_pozyczki = Var2, proportion = Freq) %>%
       mutate(variable = col) %>%
-      tidyr::pivot_wider(
+      pivot_wider(
         names_from = status_pozyczki,
         values_from = proportion,
         names_prefix = "status_"
@@ -616,13 +605,31 @@ if (length(cat_cols) > 0) {
       arrange(variable, level)
   })
 
-  combined_cat_table <- dplyr::bind_rows(cat_tables)
-
-  knitr::kable(
-    combined_cat_table,
-    digits = 3,
-    caption = "Proporcje poziomów wybranych zmiennych kategorycznych względem status_pozyczki (tylko wskazane kolumny)"
-  )
+  combined_cat_table <- bind_rows(cat_tables) %>%
+    mutate(
+      variable = ifelse(variable %in% names(var_dict), var_dict[variable], variable),
+      level = ifelse(level %in% names(lvl_dict), lvl_dict[level], level),
+      across(starts_with("status_"), ~ scales::percent(.x, accuracy = 0.1))
+    ) %>%
+    rename(
+      "Zmienna" = variable,
+      "Poziom" = level,
+      "Status 0" = status_0,
+      "Status 1" = status_1
+    )
+  
+  combined_cat_table %>%
+    kable(
+      caption = "Proporcje poziomów wybranych zmiennych kategorycznych względem statusu pożyczki",
+      align = "llcc"
+    ) %>%
+    kable_styling(
+      full_width = FALSE,
+      bootstrap_options = c("striped", "hover", "condensed"),
+      font_size = 13
+    ) %>%
+    row_spec(0, bold = TRUE, color = "white", background = "#3c8dbc") %>%
+    column_spec(1, bold = TRUE, width = "19em")
 }
 ```
 
@@ -675,11 +682,39 @@ model_logit <- glm(
   family = binomial
 )
 
-knitr::kable(broom::tidy(model_logit), digits = 6, caption = "Logit: tylko procent_dochodu_pozyczka")
+# Tabela współczynników modelu
+kable(
+  broom::tidy(model_logit),
+  digits = 6,
+  caption = "Model logitowy: tylko procent_dochodu_pozyczka",
+  align = "lcccc"
+) %>%
+  kable_styling(
+    full_width = FALSE,
+    bootstrap_options = c("striped", "hover", "condensed"),
+    font_size = 13
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#3c8dbc")
 
+# Ilorazy szans
 or_1pp  <- exp(coef(model_logit)["procent_dochodu_pozyczka"] * 0.01)
 or_10pp <- exp(coef(model_logit)["procent_dochodu_pozyczka"] * 0.10)
-knitr::kable(data.frame(OR_1pp = or_1pp, OR_10pp = or_10pp), digits = 3, caption = "Iloraz szans na +1pp i +10pp")
+
+data.frame(
+  `Iloraz szans przy wzroście o 1pp` = or_1pp,
+  `Iloraz szans przy wzroście o 10pp` = or_10pp
+) %>%
+  kable(
+    digits = 3,
+    caption = "Ilorazy szans dla wzrostu procentu dochodu pożyczki o 1 pp oraz 10 pp",
+    align = "cc"
+  ) %>%
+  kable_styling(
+    full_width = FALSE,
+    bootstrap_options = c("striped", "hover", "condensed"),
+    font_size = 13
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#3c8dbc")
 ```
 
 Im większy udział raty w dochodzie, tym niższe prawdopodobieństwo otrzymania pożyczki; każdy wzrost o 1 punkt procentowy zmniejsza szanse o około 10% (OR≈0.901), o 10 punktów procentowych o około 65% (OR≈0.353), a przy 40% udziału przewidywane prawdopodobieństwo wynosi około 22%.
@@ -705,7 +740,7 @@ ggplot(df, aes(x = wiek, y = status_num)) +
   stat_summary_bin(fun = mean, bins = 12, geom = "point", size = 2, color = "black") +
   stat_summary_bin(fun = mean, bins = 12, geom = "line", linewidth = 1, color = "steelblue") +
   labs(
-    title = "Empiryczna zależność: wiek vs prawdopodobieństwo uzyskania pożyczki",
+    title = "Zależność: wiek vs prawdopodobieństwo uzyskania pożyczki",
     x = "Wiek",
     y = "Prawdopodobieństwo uzyskania pożyczki"
   ) +
@@ -811,9 +846,27 @@ ff_table <- summary_factorlist(
 
 ff_table %>% knitr::kable(caption = "Analiza opisowa wg status_pozyczki (z testami)")
 ```
+Pożyczki zatwierdzone mają średnio wyższy dochód roczny, dłuższą historię kredytową, niższe oprocentowanie, niższy procent dochodu przeznaczany na pożyczkę i nieco wyższą kwotę pożyczki niż pożyczki odrzucone. Różnice między grupami są istotne statystycznie dla większości cech (poza scoringiem kredytowym, który nie różni się pomiędzy grupami).
+
 
 ```{r, Zestawienie analizy opisowej - kategoryczne, echo=FALSE, message=FALSE, warning=FALSE}
-
+# SŁOWNIKI TŁUMACZEŃ
+level_dict <- c(
+  Male = "Mężczyzna", Female = "Kobieta",
+  Associate = "Policealne", Bachelor = "Licencjat",
+  Doctorate = "Doktorat", "High School" = "Szkoła średnia", Master = "Magister",
+  Mortgage = "Hipoteka", Other = "Inny", Own = "Własność", Rent = "Najem",
+  Debtconsolidation = "Spłata zadłużenia",
+  Education = "Edukacja", Homeimprovement = "Remont",
+  Medical = "Leczenie", Personal = "Wydatki osobiste", Venture = "Inwestycja",
+  "0" = "Nie", "1" = "Tak"
+)
+# Nazwy zmiennych opcjonalnie
+col_dict <- c(
+  plec = "Płeć", wyksztalcenie = "Wykształcenie",
+  status_mieszkaniowy = "Status mieszkaniowy", cel_pozyczki = "Cel pożyczki",
+  wczesniejsze_zaleglosci = "Wcześniejsze zaległości"
+)
 
 dane_ff <- dane_clean %>%
   mutate(status_pozyczki = factor(status_pozyczki, levels = c(0, 1),
@@ -826,33 +879,39 @@ explanatory <- c(
 )
 
 ff_table2 <- summary_factorlist(
-  dane_ff,
-  dependent,
-  explanatory,
-  p = TRUE,
-  na_include = TRUE,
+  dane_ff, dependent, explanatory,
+  p = TRUE, na_include = TRUE,
   add_dependent_label = TRUE
 )
 
-# --- grube linie po konkretnych wierszach (np. Male, Master, Rent, Venture, 1) ---
-# Uwaga: finalfit czasem różnie nazywa kolumnę z poziomem (level) – obsługujemy najczęstsze przypadki.
+# Przetłumacz nazwy poziomów i zmiennych
+# --- znajdź kolumnę, w której są poziomy ---
 level_col <- intersect(names(ff_table2), c("level", "levels", "category", "value", "label"))[1]
-if (is.na(level_col)) level_col <- names(ff_table2)[2]  # awaryjnie: zwykle 2. kolumna
+if (is.na(level_col)) level_col <- names(ff_table2)[2]
 
-# Funkcja pomocnicza: znajduje indeksy wierszy (1..n), gdzie poziom == szukany (case-insensitive)
+ff_table2[[level_col]] <- ifelse(
+  ff_table2[[level_col]] %in% names(level_dict),
+  level_dict[ff_table2[[level_col]]],
+  ff_table2[[level_col]]
+)
+if ("Dependent" %in% names(ff_table2)) {
+  for (nm in names(col_dict)) {
+    ff_table2$Dependent <- gsub(nm, col_dict[[nm]], ff_table2$Dependent, fixed = TRUE)
+  }
+}
+
+# Grube linie po wybranych poziomach (po polsku)
+cut_after <- c("Mężczyzna", "Magister", "Najem", "Inwestycja", "Tak")
 find_row_idx <- function(x) {
   which(str_to_lower(str_trim(ff_table2[[level_col]])) == str_to_lower(x))
 }
-
-cut_after <- c("male", "master", "rent", "venture", "1")
 cut_rows <- sort(unique(unlist(lapply(cut_after, find_row_idx))))
-# row_spec w kableExtra: 0 = header, 1..n = wiersze danych
 cut_rows_kable <- cut_rows
 
 k <- knitr::kable(
   ff_table2,
   format = "html",
-  caption = "Analiza opisowa wg loan_status (z testami) — zmienne kategoryczne",
+  caption = "Analiza opisowa wg status_pozyczki (z testami) — zmienne kategoryczne (nazwy po polsku)",
   escape = TRUE
 )
 
@@ -865,7 +924,6 @@ tbl <- k %>%
   kableExtra::row_spec(0, extra_css = "white-space: normal; padding: 10px 12px; line-height: 1.25;") %>%
   kableExtra::row_spec(1:nrow(ff_table2), extra_css = "padding: 8px 12px; line-height: 1.25;")
 
-# Dodaj grube kreski po wskazanych wierszach (jeśli znalezione)
 if (length(cut_rows_kable) > 0) {
   for (r in cut_rows_kable) {
     tbl <- tbl %>%
@@ -875,6 +933,8 @@ if (length(cut_rows_kable) > 0) {
 
 tbl
 ```
+
+Nie ma istotnych różnic w podziale na płeć ani wykształcenie pomiędzy pożyczkami odrzuconymi i zatwierdzonymi. Status mieszkaniowy oraz wcześniejsze zaległości mają znaczenie: pożyczki częściej są zatwierdzane osobom o statusie „Hipoteka” lub „Własność” i tym, którzy nie mieli wcześniejszych zaległości. Różnią się także cele pożyczek – zatwierdzane są częściej w przypadku edukacji i inwestycji, a rzadziej na spłatę zadłużenia, remont czy wydatki medyczne.
 
 ```{r}
 # Przygotowanie grupy (etykiety 0/1 -> opisowe)
@@ -1040,6 +1100,7 @@ DT::datatable(
 )
 ```
 
+Pożyczki zatwierdzone są średnio niższe niż odrzucone, ale udzielane osobom o znacznie wyższych dochodach. Dla zatwierdzonych widać mniejszy udział pożyczki w dochodzie i niższe oprocentowanie. Odchylenia i rozstępy są wyraźnie wyższe w grupie zatwierdzonej, co świadczy o większym zróżnicowaniu dochodów i kwot. Co ciekawe, scoring kredytowy i wiek nie różnią się mocno między grupami — zwłaszcza średnie i mediana są niemal identyczne, mimo nieco większej rozpiętości w grupie zatwierdzonej. Można zauważyć, że zatwierdzane pożyczki są przyznawane osobom o lepszej sytuacji finansowej i niższym ryzyku zadłużeniowym.
 
 # Wnioskowanie statystyczne
 
@@ -1237,7 +1298,7 @@ ggplot(d, aes(x = housing_clean, y = .data[[outcome_var]], group = status_clean,
   scale_fill_manual(name = "Status pożyczki", values = cols) +
   guides(colour = FALSE, fill = guide_legend(override.aes = list(shape = 21, size = 4, stroke = 0.9))) +
   scale_y_continuous(labels = comma) +
-  coord_cartesian(ylim = c(0, 1e6)) +    # <-- tutaj ograniczenie osi Y do 1 000 000
+  coord_cartesian(ylim = c(0, 200000)) +    # <-- tutaj ograniczenie osi Y do 200 000
   labs(x = "Status mieszkaniowy", y = "Średni dochód roczny",
        title = "Interakcja: dochod_roczny ~ status_pozyczki * status_mieszkaniowy") +
   theme_minimal(base_size = 13) +
@@ -1255,23 +1316,74 @@ Wykres pokazuje średnie roczne dochody w podziale na status mieszkaniowy i stat
 **Test Kruskala-Wallisa**
 
 ```{r test kruskala wallisa, warning=FALSE, message=FALSE, results='asis'}
-outcome_var <- "dochod_roczny"        # zmienna numeryczna (np. GPA)
-group_var   <- "status_pozyczki"  # zmienna kategoryczna (grupy do porównania)
+outcome_var <- "dochod_roczny"
+group_var   <- "status_pozyczki"
+
 df_kw <- dane_clean %>%
-  
-  dplyr::select(all_of(c(outcome_var, group_var))) %>%
+  select(all_of(c(outcome_var, group_var))) %>%
   filter(!is.na(.data[[outcome_var]]), !is.na(.data[[group_var]])) %>%
   mutate(!!group_var := as.factor(.data[[group_var]]))
 
-kw_res <- kruskal_test(df_kw, formula = as.formula(paste(outcome_var, "~", group_var)))
-kw_res
+# Statystyki opisowe
+summary_tbl <- df_kw %>%
+  group_by(!!sym(group_var)) %>%
+  summarise(
+    N = n(),
+    Mediana = median(!!sym(outcome_var)),
+    Kwartyl1 = quantile(!!sym(outcome_var), 0.25),
+    Kwartyl3 = quantile(!!sym(outcome_var), 0.75),
+    `Przycięta średnia` = mean(!!sym(outcome_var), trim = 0.1),
+    .groups = "drop"
+  ) %>%
+  mutate(`Status pożyczki` = as.character(!!sym(group_var))) %>%
+  select(`Status pożyczki`, N, Mediana, Kwartyl1, Kwartyl3, `Przycięta średnia`)
 
-if (!is.na(kw_res$p) && kw_res$p < 0.05) {
+# Test Kruskala-Wallisa
+kw_res <- kruskal_test(df_kw, formula = as.formula(paste(outcome_var, "~", group_var)))
+
+kruskal_tbl <- tibble::tibble(
+  Test = "Kruskal-Wallis",
+  Statystyka = paste0("H = ", signif(kw_res$statistic, 4)),
+  `p-value` = scales::pvalue(kw_res$p)
+)
+
+# Test Dunn – ZAWSZE wpisuje Z = [wartość], jeżeli jest!
+dunn_tbl <- NULL
+if (length(unique(df_kw[[group_var]])) > 1 && !is.na(kw_res$p) && kw_res$p < 0.05) {
   dunn_res <- dunn_test(df_kw, formula = as.formula(paste(outcome_var, "~", group_var)), p.adjust.method = "fdr")
-  dunn_res
-} else {
-  message("Kruskal-Wallis: p >= 0.05 — post-hoc Dunn pominięto.")
+  dunn_tbl <- dunn_res %>%
+    mutate(
+      Statystyka = paste0("Z = ", sprintf("%.2f", statistic))
+    ) %>%
+    transmute(
+      Test = paste0("Dunn (", group1, " vs ", group2, ")"),
+      Statystyka,
+      `p-value` = scales::pvalue(p.adj)
+    )
 }
+
+test_tbl <- bind_rows(kruskal_tbl, dunn_tbl)
+
+# --- WYŚWIETLANIE ---
+test_tbl %>%
+  kable(
+    caption = "Wyniki testu Kruskala-Wallisa oraz post-hoc Dunn dla dochodu rocznego",
+    align = "lcc"
+  ) %>%
+  kable_styling(full_width = FALSE, position = "center",
+                bootstrap_options = c("striped", "hover", "condensed"),
+                font_size = 14) %>%
+  row_spec(0, bold = TRUE)
+
+summary_tbl %>%
+  kable(
+    caption = "Wybrane statystyki opisowe dochodu rocznego wg status_pozyczki",
+    align = "lccccc"
+  ) %>%
+  kable_styling(full_width = FALSE, position = "center",
+                bootstrap_options = c("striped", "hover", "condensed"),
+                font_size = 14) %>%
+  row_spec(0, bold = TRUE)
 ```
 
 Test Kruskal–Wallisa wykazał istotną różnicę w rozkładzie dochodu rocznego między grupami (χ² ≈ 3402.37, df = 1, p < 0.001).
