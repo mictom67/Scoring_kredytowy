@@ -1416,3 +1416,30 @@ print(p)
 
 Wykres pokazuje rozkład udziału kwoty pożyczki w dochodzie (w %) dla dwóch grup: bez wcześniejszych zaległości („Nie”) i z wcześniejszymi zaległościami („Tak”). Czerwone kropki to trimmed mean - ~14.9% dla grupy „Nie” i ~11.6% dla „Tak”, czyli osoby bez wcześniejszych zaległości biorą przeciętnie nieco większe pożyczki w stosunku do dochodu.
 Jednocześnie rozkłady silnie się pokrywają i obie mają sporo obserwacji w przedziale ~10–30% oraz pojedyncze wartości skrajne powyżej ~50%.
+
+
+#Podsumowanie i wnioski końcowe 
+
+Niniejszy raport poddał analizie zbiór 45 000 wniosków kredytowych.  Przeprowadzony został proces czyszczenia danych, imputacji braków metodą hot-deck oraz weryfikacji statystycznej.
+
+Analiza wykazała obecność licznych błędów logicznych w danych surowych (np. wiek 144 lata, staż pracy 125 lat), co wymagało rygorystycznego czyszczenia. Dla celów predykcyjnych w przyszłości, zaleca się budowę modelu regresji logistycznej w oparciu o zmienne: procent_dochodu_pozyczka, dochod_roczny oraz wczesniejsze_zaleglosci, gdyż wykazują one najwyższą moc dyskryminacyjną.
+
+Najsilniejszymi czynnikami różnicującymi grupę pożyczek zatwierdzonych od odrzuconych okazały się wskaźniki ekonomiczne oraz historia kredytowa. Najważniejszym parametrem numerycznym okazała się realacja pożyczki do dochodu. Im wyższy udział wnioskowanej kwoty w rocznym dochodzie, tym gwałtowniej spada szansa na akceptację (każdy wzrost o 1 p.p. udziału zmniejsza szanse na pożyczkę o ok. 10%). Jeżeli chodzi o dochód mediana osób z zatwierdzoną pożyczką (~73 tys. PLN) jest o niemal 45% wyższa niż w grupie odrzuconej (~50 tys. PLN), co potwierdził test Kruskala-Wallisa (p < 0,001). Kolejnym ważnym aspektem okazała sie historia finansowa oraz wiarygodność. Brak wcześniejszych zaległości płatniczych oraz posiadanie nieruchomości (hipoteka lub własność) istotnie zwiększają prawdopodobieństwo pozytywnej decyzji.
+
+Przeprowadzona analiza wykazała, że instytucje finansowe wykazują preferencje co do przeznaczenia środków. Najwyższy odsetek akceptacji odnotowano dla pożyczek o charakterze "inwestycyjnym" (Venture) oraz edukacyjnym. Najtrudniej o finansowanie w przypadku spłaty zadłużenia, remontów i wydatków medycznych. Wbrew postawionym hipotezom, pewne cechy profilu klienta nie mają statystycznie istotnego wpływu na status pożyczki, a są nimi:
+- Płeć i wykształcenie: Testy chi-kwadrat wykazały brak zależności – proces decyzyjny wydaje się być wolny od uprzedzeń demograficznych w tym zakresie.
+- Wiek: W przedziale 18–60 lat trend prawdopodobieństwa akceptacji jest relatywnie płaski. Wiek silnie korluje z długością historii kredytowej, ale sam w sobie nie jest barierą w uzyskaniu finansowania.
+
+Najważniejsze wnioski, odnośnie kryteriów przyznania kredytu:
+- Sytuacja finansowa a demografia: Bank ocenia głównie sytuację finansową. Płeć, wiek czy poziom wykształcenia okazały się praktycznie nieistotne w procesie podejmowania decyzji.
+- Zdolność do spłaty: Najważniejszym wskaźnikiem jest to, jaką część zarobków stanowi rata. Im mniejszy jest to procent, tym większa szansa na otrzymanie kredytu.
+- Dochód: Osoby, które dostały pożyczkę, zarabiały średnio znacznie więcej (mediana 73 tys. PLN) niż te, których wnioski odrzucono (50 tys. PLN).
+- Historia i majątek: Czysta historia kredytowa (brak wcześniejszych zaległości) oraz posiadanie nieruchomości (własność lub hipoteka) stanowia silne fundamenty, do pozytywnej decyzji kredytowej.
+- Cel pożyczki: Łatwiej o kredyt na rozwój (edukacja, inwestycje) niż aspekty takie jak spłata starych długów czy remonty.
+
+Wniosek końcowy: Portfel kredytowy jest zarządzany w oparciu o racjonalną ocenę zdolności do spłaty i historię kredytową, przy jednoczesnym zachowaniu neutralności wobec cech demograficznych klientów. Kryteria, które mają najwiekszą szanse na powodzenie w otrzymaniu decyzji pozytywnej dotyczącej kredytu to: nieskie obciążenie dochodu, brak zaległości w przeszłości klienta, stabilne oraz wysokie zarobki oraz posiadanie własnego mieszkania/ domu. Czynniki demograficzne oraz wiek kredytobiorcy okazły sie być mniej istotne. 
+
+
+
+
+
