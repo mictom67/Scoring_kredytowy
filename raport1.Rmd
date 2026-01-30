@@ -60,7 +60,7 @@ Dane te mogą być wykorzystywane w różnych celach analitycznych i badawczych,
 Zbiór danych zawiera 14 zmiennych opisujących osoby ubiegające się o pożyczkę oraz cechy samej pożyczki. Poniższa tabela przedstawia zestawienie wszystkich kolumn wraz z krótkim opisem:
 
 | Nazwa zmiennej | Opis | Typ danych |
-|------------------------|------------------------|------------------------|
+|----|----|----|
 | person_age | Wiek osoby | Liczba zmiennoprzecinkowa |
 | person_gender | Płeć osoby | Kategoryczna |
 | person_education | Najwyższy poziom wykształcenia | Kategoryczna |
@@ -1402,7 +1402,7 @@ print(p)
 
 Niniejszy raport poddał analizie zbiór **45 000 wniosków kredytowych.** Przeprowadzony został proces czyszczenia danych, imputacji braków metodą hot-deck oraz weryfikacji statystycznej.
 
-### Jakość danych i czyszczenie
+## Jakość danych i czyszczenie
 
 Analiza wykazała obecność **licznych błędów logicznych** w danych surowych (np. wiek 144 lata, staż pracy 125 lat), co wymagało rygorystycznego czyszczenia.
 
@@ -1410,7 +1410,7 @@ Analiza wykazała obecność **licznych błędów logicznych** w danych surowych
 
 ## Kluczowe czynniki wpływające na decyzję kredytową
 
-Najsilniejszymi czynnikami różnicującymi grupę pożyczek zatwierdzonych od odrzuconych okazały się wskaźniki ekonomiczne oraz historia kredytowa. Najważniejszym parametrem numerycznym okazała się **relacja pożyczki do dochodu.** Im wyższy udział wnioskowanej kwoty w rocznym dochodzie, tym gwałtowniej spada szansa na akceptację (każdy wzrost o 1 p.p. udziału zmniejsza szanse na pożyczkę o ok. 10%).
+Najsilniejszymi czynnikami różnicującymi grupę pożyczek zatwierdzonych od odrzuconych okazały się wskaźniki ekonomiczne oraz historia kredytowa. Najważniejszym parametrem numerycznym okazała się **relacja pożyczki do dochodu.** Im wyższy udział wnioskowanej kwoty w rocznym dochodzie, tym gwałtowniej spada szansa na akceptację *(każdy wzrost o 1 p.p. udziału zmniejsza szanse na pożyczkę o ok. 10%).*
 
 Jeżeli chodzi o dochód mediana osób z zatwierdzoną pożyczką (\~73 tys. PLN) jest o niemal 45% wyższa niż w grupie odrzuconej (\~50 tys. PLN), co potwierdził test Kruskala-Wallisa (p \< 0,001). Kolejnym ważnym aspektem okazała się **historia finansowa oraz wiarygodność.** Brak wcześniejszych zaległości płatniczych oraz posiadanie nieruchomości (hipoteka lub własność) istotnie zwiększają prawdopodobieństwo pozytywnej decyzji.
 
@@ -1426,7 +1426,7 @@ Przeprowadzona analiza wykazała, że instytucje finansowe wykazują preferencje
 
 -   **Wiek:** W przedziale 18–60 lat trend prawdopodobieństwa akceptacji jest relatywnie płaski. Wiek silnie korluje z długością historii kredytowej, ale sam w sobie nie jest barierą w uzyskaniu finansowania.
 
-## Kryteriów przyznania kredytu
+### Kryteriów przyznania kredytu
 
 Najważniejsze wnioski, odnośnie kryteriów przyznania kredytu:
 
@@ -1442,4 +1442,4 @@ Najważniejsze wnioski, odnośnie kryteriów przyznania kredytu:
 
 ## Wnioski końcowe
 
-Portfel kredytowy jest zarządzany w oparciu o **racjonalną ocenę zdolności do spłaty i historię kredytową,** przy jednoczesnym zachowaniu **neutralności wobec cech demograficznych** klientów. Kryteria, które mają najwiekszą szanse na powodzenie w otrzymaniu decyzji pozytywnej dotyczącej kredytu to: nieskie obciążenie dochodu, brak zaległości w przeszłości klienta, stabilne oraz wysokie zarobki oraz posiadanie własnego mieszkania/ domu. Czynniki demograficzne oraz wiek kredytobiorcy okazły sie być **mniej istotne.**
+Portfel kredytowy jest zarządzany w oparciu o **racjonalną ocenę zdolności do spłaty i historię kredytową,** przy jednoczesnym zachowaniu **neutralności wobec cech demograficznych** klientów. Kryteria, które mają najwiekszą szanse na powodzenie w otrzymaniu decyzji pozytywnej dotyczącej kredytu to: nieskie obciążenie dochodu, brak zaległości w przeszłości klienta, stabilne oraz wysokie zarobki oraz posiadanie własnego mieszkania/ domu. Czynniki demograficzne oraz wiek kredytobiorcy okazały się być **mniej istotne.**
