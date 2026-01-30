@@ -11,7 +11,7 @@ output:
     theme: cosmo       # opcjonalnie: ładniejszy motyw
     highlight: tango   # podświetlanie kodu
 lang: pl
-always_allow_html: true
+always_allow_html:
 ---
 
 ```{r setup, include=FALSE}
@@ -19,10 +19,9 @@ always_allow_html: true
 knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 
 #pobieranie i ładowanie bibliotek bez potrzeby instalacji
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
-pacman::p_load(
-  tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra, rstatix, forcats, pROC, plotly, ggeffects, effectsize, ggstatsplot, purrr, car, stringr
-)
+if (!requireNamespace("pacman", quietly = TRUE)) 
+install.packages("pacman") 
+pacman::p_load( tidyverse, lubridate, rmdformats, dplyr, naniar, finalfit, VIM, validate, errorlocate, ggplot2, janitor, scales, ggcorrplot, patchwork, Hmisc, gtsummary, skimr, psych, knitr, kableExtra, rstatix, forcats, pROC, plotly, ggeffects, effectsize, ggstatsplot, purrr, car, stringr )
 ```
 
 ```{r include=FALSE}
@@ -177,15 +176,6 @@ vis_miss(dane) +
   theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust = 1, size = 12))
 ```
 
-### Wzorzec braków danych
-
-```{r szachownica, echo=FALSE, message=FALSE, warning=FALSE,  fig.width=8, fig.height=11}
-p <- missing_pattern(dane) + theme(axis.text.x = element_text(angle = 45, vjust = 0.1,
-                                                         hjust = 1, size = 16))
-
-invisible(capture.output(print(p), file = NULL))
-```
-
 ## Lokalizacja błędów
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -193,8 +183,6 @@ fixable_data <- replace_errors(dane, rules)
 cf <- confront (fixable_data, rules)
 barplot(cf, main="fixable_data")
 ```
-
-##Imputacja brakujących i nielogicznych danych metodą hotdeck
 
 ```{r include=FALSE}
 dane_imp <- hotdeck(fixable_data)
@@ -362,7 +350,7 @@ plot_pareto(dane_clean, var = "kwota_pozyczki", top_n = 10000) +
   ggtitle("Wykres Pareto dla kwoty pożyczki (kwota_pozyczki)")
 ```
 
-Wykres Pareto pokazuje sumę udzielonych pożyczek, zaczynając od największych kwot i stopniowo dodając coraz mniejsze. Każdy słupek to kolejna pożyczka, a czerwona linia pokazuje, jak narasta suma wszystkich kwot pożyczek. Z wykresu widać, że niewielka liczba największych pożyczek odpowiada za znaczną część całkowitej wartości portfela – większość osób wnioskuje o znacznie niższe kwoty.
+> Wykres Pareto pokazuje sumę udzielonych pożyczek, zaczynając od największych kwot i stopniowo dodając coraz mniejsze. Każdy słupek to kolejna pożyczka, a czerwona linia pokazuje, jak narasta suma wszystkich kwot pożyczek. Z wykresu widać, że **niewielka liczba największych pożyczek odpowiada za znaczną część całkowitej wartości portfela – większość osób wnioskuje o znacznie niższe kwoty.**
 
 ## Rozkład kwoty pożyczki w zależności od statusu pożyczki
 
@@ -396,7 +384,7 @@ plot_distributions <- function(df, var = "kwota_pozyczki", by = "status_pozyczki
 plot_distributions(dane_clean, var = "kwota_pozyczki", by = "status_pozyczki")
 ```
 
-Rozkład kwoty pożyczki jest bardzo podobny zarówno wśród wniosków zaakceptowanych, jak i odrzuconych – w obu grupach większość pożyczek dotyczy kwot od kilku do kilkunastu tysięcy złotych. Mediany oraz zakresy typowych wartości są zbliżone, co widać na boxplotach. Zarówno w grupie zatwierdzonych, jak i odrzuconych wniosków, pojawiają się pojedyncze, bardzo wysokie kwoty jako wartości odstające. Decyzja o przyznaniu lub odrzuceniu pożyczki nie jest więc silnie związana z jej wysokością.
+> Rozkład kwoty pożyczki jest bardzo podobny zarówno wśród wniosków zaakceptowanych, jak i odrzuconych – w obu grupach większość pożyczek dotyczy kwot od kilku do kilkunastu tysięcy złotych. Mediany oraz zakresy typowych wartości są zbliżone, co widać na boxplotach. Zarówno w grupie zatwierdzonych, jak i odrzuconych wniosków, pojawiają się pojedyncze, bardzo wysokie kwoty jako wartości odstające. **Decyzja o przyznaniu lub odrzuceniu pożyczki nie jest więc silnie związana z jej wysokością.**
 
 ```{r wykresy-ECDF-Paweł, echo=FALSE, message=FALSE, warning=FALSE}
 plot_ecdf <- function(df, var = "kwota_pozyczki", log_scale = TRUE) {
@@ -416,7 +404,7 @@ plot_ecdf <- function(df, var = "kwota_pozyczki", log_scale = TRUE) {
 plot_ecdf(dane_clean, var = "kwota_pozyczki")
 ```
 
-Większość pożyczek koncentruje się poniżej 10 000 PLN (stroma część krzywej), natomiast wartości powyżej 30 000 PLN stanowią jedynie niewielki odsetek obserwacji (krzywa zbliża się do 1 dopiero na końcu).
+> **Większość pożyczek koncentruje się poniżej 10 000 PLN** (stroma część krzywej), natomiast wartości powyżej 30 000 PLN stanowią jedynie niewielki odsetek obserwacji (krzywa zbliża się do 1 dopiero na końcu).
 
 ```{r wykresy_heatmapa_korelacji_Paweł, echo=FALSE, message=FALSE, warning=FALSE}
 plot_correlation_heatmap <- function(df,
@@ -490,14 +478,12 @@ plot_correlation_heatmap <- function(df,
 plot_correlation_heatmap(dane_clean) 
 ```
 
-Mapa korelacji pokazuje zależności pomiędzy zmiennymi numerycznymi w zbiorze danych. Zdecydowana większość korelacji jest słaba lub umiarkowana, a tylko nieliczne pary zmiennych wykazują silniejszy związek.
-
-Najwyższe korelacje obserwujemy pomiędzy:
-Wiek a długość historii kredytowej (r = 0.81) — im ktoś starszy, tym dłuższą ma historię kredytową, co jest intuicyjne.
-Doświadczenie zawodowe lata i wiek (r = 0.75) — starsze osoby mają też więcej lat doświadczenia.
-Kwota pożyczki a procent_dochodu_pozyczka (r = 0.64) — wyższa kwota pożyczki wiąże się z większym udziałem raty w dochodzie.
+> Mapa korelacji pokazuje zależności pomiędzy zmiennymi numerycznymi w zbiorze danych. Zdecydowana większość korelacji jest słaba lub umiarkowana, a tylko nieliczne pary zmiennych wykazują silniejszy związek.
+>
+> Najwyższe korelacje obserwujemy pomiędzy: *Wiek a długość historii kredytowej (r = 0.81) — im ktoś starszy, tym dłuższą ma historię kredytową, co jest intuicyjne. Doświadczenie zawodowe lata i wiek (r = 0.75) — starsze osoby mają też więcej lat doświadczenia. Kwota pożyczki a procent_dochodu_pozyczka (r = 0.64) — wyższa kwota pożyczki wiąże się z większym udziałem raty w dochodzie.*
 
 # Wyniki w odniesieniu do pytań badawczych
+
 ```{r wykresy-violin-boxplot-Paweł, echo=FALSE, warning=FALSE}
 plot_violin <- function(df, numeric_var = "dochod_roczny", cat_var = "status_pozyczki") {
   df2 <- df %>% filter(!is.na(.data[[numeric_var]]))
@@ -532,7 +518,7 @@ plot_violin <- function(df, numeric_var = "dochod_roczny", cat_var = "status_poz
 plot_violin(dane_clean, numeric_var = "dochod_roczny", cat_var = "status_pozyczki")
 ```
 
-W większości przypadków dochody osób biorących pożyczki są relatywnie niskie (większość skupiona w dolnym zakresie), ale jest też mała grupa osób z bardzo wysokimi dochodami — wykres pokazuje tę nierównomierność i kilka ekstremalnych wartości.
+> W większości przypadków dochody osób biorących pożyczki są relatywnie niskie (większość skupiona w dolnym zakresie), ale jest też mała grupa osób z bardzo wysokimi dochodami — wykres pokazuje tę nierównomierność i kilka ekstremalnych wartości.
 
 ## Pytanie: Jakie są główne różnice w profilu (np. dochód, wiek, stan cywilny) między klientami, którzy otrzymali pozytywną ocenę, a tymi, którzy otrzymali negatywną?
 
@@ -633,8 +619,6 @@ if (length(cat_cols) > 0) {
 }
 ```
 
-
-
 | **Czynniki wpływające na udzielnie lub nieudzielenie pożyczki:**
 
 -   Dochód osobisty
@@ -661,7 +645,7 @@ if (length(cat_cols) > 0) {
 
 ## Pytanie: Czy wysokość dochodu jest najważniejszym czynnikiem decydującym o przyznaniu kredytu?
 
-***Do oszacowania wpływu zmiennych zastosujemy regresję logistyczną***
+***Do oszacowania wpływu zmiennych zastosujemy regresję logistyczną.***
 
 Na podstawie poprzedniej analizy bierzemy pod uwagę czynniki wpływające na udzielenie lub nieudzielenie pożyczki (uwzględniamy tylko kolumny numeryczne do policzenia korelacji).
 
@@ -717,7 +701,7 @@ data.frame(
   row_spec(0, bold = TRUE, color = "white", background = "#3c8dbc")
 ```
 
-Im większy udział raty w dochodzie, tym niższe prawdopodobieństwo otrzymania pożyczki; każdy wzrost o 1 punkt procentowy zmniejsza szanse o około 10% (OR≈0.901), o 10 punktów procentowych o około 65% (OR≈0.353), a przy 40% udziału przewidywane prawdopodobieństwo wynosi około 22%.
+> Im większy udział raty w dochodzie, tym niższe prawdopodobieństwo otrzymania pożyczki; każdy wzrost o 1 punkt procentowy zmniejsza szanse o około 10% (OR≈0.901), o 10 punktów procentowych o około 65% (OR≈0.353), a przy 40% udziału przewidywane prawdopodobieństwo wynosi około 22%.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 ggplot(dane_clean, aes(x = procent_dochodu_pozyczka, y = status_pozyczki)) +
@@ -725,7 +709,7 @@ ggplot(dane_clean, aes(x = procent_dochodu_pozyczka, y = status_pozyczki)) +
   geom_smooth(method = "glm", method.args = list(family = "binomial"))
 ```
 
-Duże znaczenie ma relacja pożyczki do dochodu, czyli to, jaką część rocznych zarobków stanowi wnioskowana kwota. Im mniejszy udział pożyczki w dochodzie, tym większe prawdopodobieństwo jej akceptacji.
+> Duże znaczenie ma relacja pożyczki do dochodu, czyli to, jaką część rocznych zarobków stanowi wnioskowana kwota. Im mniejszy udział pożyczki w dochodzie, tym większe prawdopodobieństwo jej akceptacji.
 
 ## Hipoteza: Wraz ze wzrostem wieku spada prawdopodobieństwo otrzymania pożyczki.
 
@@ -747,6 +731,7 @@ ggplot(df, aes(x = wiek, y = status_num)) +
   scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1)) +
   theme_minimal(base_size = 12)
 ```
+
 ```{r}
 # Dane z kompletnym wiekiem i statusem
 df <- dane_clean %>%
@@ -776,9 +761,7 @@ ggplot(df_grp, aes(x = grupa_wiek, y = percent)) +
   theme_minimal(base_size = 12)
 ```
 
-
-
-Wniosek: W próbie dominuje grupa 23–27 lat (48%), następnie 28–32 (23%) i 18–22 (12%); udział starszych roczników jest bardzo mały (41–60 to pojedyncze procenty, a 60+ zaledwie ~0.2%). Empiryczne prawdopodobieństwo uzyskania pożyczki do okolic 55–60 lat utrzymuje się na poziomie ~75–80% i lekko spada w okolicach 60 lat. Skokowy wzrost powyżej 60 lat nie odzwierciedla rzeczywistej decyzji kredytowej—wynika z zastosowania imputacji hot‑deck dla brakujących danych, a nie z obserwacji; przy tak znikomej liczbie przypadków 60+ wyniki są artefaktem i nie powinny być interpretowane. Podsumowując, w dostępnych realnych obserwacjach trend względem wieku jest co najwyżej płaski lub lekko malejący, natomiast wnioski dla 60+ są niewiarygodne z powodu imputacji i bardzo małej liczebności.
+> W powyższej próbie dominuje grupa 23–27 lat (48%), następnie 28–32 (23%) i 18–22 (12%); udział starszych roczników jest bardzo mały (41–60 to pojedyncze procenty, a 60+ zaledwie \~0.2%). Empiryczne prawdopodobieństwo uzyskania pożyczki do okolic 55–60 lat utrzymuje się na poziomie \~75–80% i lekko spada w okolicach 60 lat. Skokowy wzrost powyżej 60 lat nie odzwierciedla rzeczywistej decyzji kredytowej—wynika z zastosowania imputacji hot‑deck dla brakujących danych, a nie z obserwacji; przy tak znikomej liczbie przypadków 60+ wyniki są artefaktem i nie powinny być interpretowane. Podsumowując, w dostępnych realnych obserwacjach trend względem wieku jest co najwyżej płaski lub lekko malejący, natomiast wnioski dla 60+ są niewiarygodne z powodu imputacji i bardzo małej liczebności.
 
 # Analiza opisowa
 
@@ -846,8 +829,8 @@ ff_table <- summary_factorlist(
 
 ff_table %>% knitr::kable(caption = "Analiza opisowa wg status_pozyczki (z testami)")
 ```
-Pożyczki zatwierdzone mają średnio wyższy dochód roczny, dłuższą historię kredytową, niższe oprocentowanie, niższy procent dochodu przeznaczany na pożyczkę i nieco wyższą kwotę pożyczki niż pożyczki odrzucone. Różnice między grupami są istotne statystycznie dla większości cech (poza scoringiem kredytowym, który nie różni się pomiędzy grupami).
 
+> [Pożyczki zatwierdzone mają średnio wyższy dochód roczny, dłuższą historię kredytową, niższe oprocentowanie, niższy procent dochodu przeznaczany na pożyczkę i nieco wyższą kwotę pożyczki niż pożyczki odrzucone]{.underline}. Różnice między grupami są istotne statystycznie dla większości cech (poza scoringiem kredytowym, który nie różni się pomiędzy grupami).
 
 ```{r, Zestawienie analizy opisowej - kategoryczne, echo=FALSE, message=FALSE, warning=FALSE}
 # SŁOWNIKI TŁUMACZEŃ
@@ -934,7 +917,7 @@ if (length(cut_rows_kable) > 0) {
 tbl
 ```
 
-Nie ma istotnych różnic w podziale na płeć ani wykształcenie pomiędzy pożyczkami odrzuconymi i zatwierdzonymi. Status mieszkaniowy oraz wcześniejsze zaległości mają znaczenie: pożyczki częściej są zatwierdzane osobom o statusie „Hipoteka” lub „Własność” i tym, którzy nie mieli wcześniejszych zaległości. Różnią się także cele pożyczek – zatwierdzane są częściej w przypadku edukacji i inwestycji, a rzadziej na spłatę zadłużenia, remont czy wydatki medyczne.
+> Nie ma istotnych różnic w podziale na płeć ani wykształcenie pomiędzy pożyczkami odrzuconymi i zatwierdzonymi. Status mieszkaniowy oraz wcześniejsze zaległości mają znaczenie: pożyczki częściej są zatwierdzane osobom o statusie „Hipoteka” lub „Własność” i tym, którzy nie mieli wcześniejszych zaległości. **Różnią się także cele pożyczek – zatwierdzane są częściej w przypadku edukacji i inwestycji, a rzadziej na spłatę zadłużenia, remont czy wydatki medyczne.**
 
 ```{r}
 # Przygotowanie grupy (etykiety 0/1 -> opisowe)
@@ -1100,7 +1083,7 @@ DT::datatable(
 )
 ```
 
-Pożyczki zatwierdzone są średnio niższe niż odrzucone, ale udzielane osobom o znacznie wyższych dochodach. Dla zatwierdzonych widać mniejszy udział pożyczki w dochodzie i niższe oprocentowanie. Odchylenia i rozstępy są wyraźnie wyższe w grupie zatwierdzonej, co świadczy o większym zróżnicowaniu dochodów i kwot. Co ciekawe, scoring kredytowy i wiek nie różnią się mocno między grupami — zwłaszcza średnie i mediana są niemal identyczne, mimo nieco większej rozpiętości w grupie zatwierdzonej. Można zauważyć, że zatwierdzane pożyczki są przyznawane osobom o lepszej sytuacji finansowej i niższym ryzyku zadłużeniowym.
+> Pożyczki zatwierdzone są średnio niższe niż odrzucone, ale udzielane osobom o znacznie wyższych dochodach. Dla zatwierdzonych widać mniejszy udział pożyczki w dochodzie i niższe oprocentowanie. Odchylenia i rozstępy są wyraźnie wyższe w grupie zatwierdzonej, co świadczy o większym zróżnicowaniu dochodów i kwot. Co ciekawe, scoring kredytowy i wiek nie różnią się mocno między grupami — zwłaszcza średnie i mediana są niemal identyczne, mimo nieco większej rozpiętości w grupie zatwierdzonej. Można zauważyć, że [zatwierdzane pożyczki są przyznawane osobom o lepszej sytuacji finansowej i niższym ryzyku zadłużeniowym.]{.underline}
 
 # Wnioskowanie statystyczne
 
@@ -1168,7 +1151,7 @@ tabela %>%
   row_spec(0, bold = TRUE)
 ```
 
-Na podstawie wyników testu t Studenta można stwierdzić, że pożyczkę najłatwiej uzyskują osoby, które charakteryzują się wyższym rocznym dochodem, wnioskują o niższą kwotę pożyczki oraz deklarują niższe oprocentowanie i stosunkowo mniejsze obciążenie dochodu ratą kredytową. Innymi słowy, banki czy instytucje udzielające pożyczek zdecydowanie preferują wnioskodawców o ustabilizowanej sytuacji finansowej, dla których potencjalna ratowna pożyczka nie stanowi zbyt dużej części rocznych zarobków – to minimalizuje ryzyko kredytowe z perspektywy pożyczkodawcy.
+> Na podstawie wyników testu t Studenta można stwierdzić, że **pożyczkę najłatwiej uzyskują osoby, które charakteryzują się wyższym rocznym dochodem, wnioskują o niższą kwotę pożyczki oraz deklarują niższe oprocentowanie i stosunkowo mniejsze obciążenie dochodu ratą kredytową.** Innymi słowy, banki czy instytucje udzielające pożyczek zdecydowanie preferują wnioskodawców o ustabilizowanej sytuacji finansowej, dla których potencjalna ratowna pożyczka nie stanowi zbyt dużej części rocznych zarobków – to minimalizuje ryzyko kredytowe z perspektywy pożyczkodawcy.
 
 **Test chi-kwadrat — porównanie zmiennych kategorycznych względem status_pozyczki**
 
@@ -1214,11 +1197,11 @@ chi2_tabela %>%
   row_spec(0, bold = TRUE)
 ```
 
-Na podstawie przeprowadzonych testów chi-kwadrat widać, że status mieszkaniowy, cel pożyczki oraz wcześniejsze zaległości są istotnie powiązane ze statusem przyznania pożyczki. Oznacza to, że te cechy mają realny wpływ na decyzję kredytową – instytucje finansowe przywiązują dużą wagę do tego, czy klient miał wcześniej zaległości, jaki ma status mieszkaniowy oraz na jaki cel zaciąga pożyczkę.
-
-Natomiast płeć i wykształcenie nie wykazały istotnego statystycznie związku z decyzją o udzieleniu kredytu, więc te czynniki nie mają większego znaczenia w analizowanym zbiorze danych.
-
-O przyznaniu pożyczki decydowały przede wszystkim czynniki związane ze stabilnością mieszkaniową, historią zadłużenia klienta i przeznaczeniem pożyczki. Aspekty demograficzne, takie jak płeć czy poziom wykształcenia, nie odgrywały tu istotnej roli.
+> Na podstawie przeprowadzonych testów chi-kwadrat widać, że status mieszkaniowy, cel pożyczki oraz wcześniejsze zaległości są istotnie powiązane ze statusem przyznania pożyczki. Oznacza to, że te cechy mają realny wpływ na decyzję kredytową – instytucje finansowe przywiązują dużą wagę do tego, czy klient miał wcześniej zaległości, jaki ma status mieszkaniowy oraz na jaki cel zaciąga pożyczkę.
+>
+> Natomiast płeć i wykształcenie nie wykazały istotnego statystycznie związku z decyzją o udzieleniu kredytu, więc te czynniki nie mają większego znaczenia w analizowanym zbiorze danych.
+>
+> [O przyznaniu pożyczki decydowały przede wszystkim czynniki związane ze stabilnością mieszkaniową, historią zadłużenia klienta i przeznaczeniem pożyczki. Aspekty demograficzne, takie jak płeć czy poziom wykształcenia, nie odgrywały tu istotnej roli.]{.underline}
 
 **Analiza ANCOVA — wpływ statusu pożyczki na kwotę przy kontroli dochodu i wieku**
 
@@ -1258,7 +1241,7 @@ ancova_results %>%
   row_spec(0, bold = TRUE)
 ```
 
-Przeprowadzona analiza ANCOVA wykazała, że status pożyczki, dochód roczny oraz wiek mają istotny wpływ na kwotę pożyczki, nawet po wzajemnym skorygowaniu ich wpływu. Oznacza to, że średnia kwota udzielanej pożyczki znacząco różni się w zależności od tego, czy wniosek został zatwierdzony czy odrzucony, a także rośnie wraz z wyższym dochodem oraz – w mniejszym stopniu – wraz z wiekiem klienta. Wszystkie te czynniki okazały się wysoce istotne statystycznie (p < 0.001), co potwierdza, że są one kluczowymi determinantami wysokości udzielanej pożyczki i powinny być uwzględniane w procesie oceny wniosków kredytowych.
+> Przeprowadzona analiza ANCOVA wykazała, że status pożyczki, dochód roczny oraz wiek mają istotny wpływ na kwotę pożyczki, nawet po wzajemnym skorygowaniu ich wpływu. Oznacza to, że średnia kwota udzielanej pożyczki znacząco różni się w zależności od tego, czy wniosek został zatwierdzony czy odrzucony, a także rośnie wraz z wyższym dochodem oraz – w mniejszym stopniu – wraz z wiekiem klienta. Wszystkie te czynniki okazały się wysoce istotne statystycznie (p \< 0.001), co potwierdza, że są one kluczowymi determinantami wysokości udzielanej pożyczki i powinny być uwzględniane w procesie oceny wniosków kredytowych.
 
 **Wykres interakcji między status_pozyczki, a status_mieszkaniowy na dochod_roczny**
 
@@ -1311,7 +1294,7 @@ ggplot(d, aes(x = housing_clean, y = .data[[outcome_var]], group = status_clean,
   )
 ```
 
-Wykres pokazuje średnie roczne dochody w podziale na status mieszkaniowy i status pożyczki: linie dla grup "Odrzucona" i "Zatwierdzona" są blisko siebie we wszystkich kategoriach, co sugeruje brak wyraźnej interakcji - dochód nie różnicuje istotnie efektu zatwierdzenia pożyczki między wynajmem, własnością czy hipoteką.
+> Wykres pokazuje średnie roczne dochody w podziale na status mieszkaniowy i status pożyczki: linie dla grup "Odrzucona" i "Zatwierdzona" są blisko siebie we wszystkich kategoriach, co sugeruje brak wyraźnej interakcji - dochód nie różnicuje istotnie efektu zatwierdzenia pożyczki między wynajmem, własnością czy hipoteką.
 
 **Test Kruskala-Wallisa**
 
@@ -1386,8 +1369,7 @@ summary_tbl %>%
   row_spec(0, bold = TRUE)
 ```
 
-Test Kruskal–Wallisa wykazał istotną różnicę w rozkładzie dochodu rocznego między grupami (χ² ≈ 3402.37, df = 1, p < 0.001).
-Post‑hoc Dunn potwierdza, że różnica dotyczy pary 0 vs 1 (stat ≈ 58.3, p_FDR < 0.001); z tabeli opisowej wynika, że grupa „Zatwierdzona” ma wyraźnie wyższe wartości dochodu (mediana ≈ 72 928, średnia ≈ 86 157) niż grupa „Odrzucona” (mediana ≈ 50 629, średnia ≈ 59 886).
+> Test Kruskal–Wallisa wykazał istotną różnicę w rozkładzie dochodu rocznego między grupami (χ² ≈ 3402.37, df = 1, p \< 0.001). Post‑hoc Dunn potwierdza, że różnica dotyczy pary 0 vs 1 (stat ≈ 58.3, p_FDR \< 0.001); z tabeli opisowej wynika, że grupa „Zatwierdzona” ma wyraźnie wyższe wartości dochodu (mediana ≈ 72 928, średnia ≈ 86 157) niż grupa „Odrzucona” (mediana ≈ 50 629, średnia ≈ 59 886).
 
 **Porównanie % pożyczki względem wcześniejszych zaległości**
 
@@ -1414,5 +1396,50 @@ p <- ggplot(d, aes(x = group, y = outcome, fill = group)) +
 print(p)
 ```
 
-Wykres pokazuje rozkład udziału kwoty pożyczki w dochodzie (w %) dla dwóch grup: bez wcześniejszych zaległości („Nie”) i z wcześniejszymi zaległościami („Tak”). Czerwone kropki to trimmed mean - ~14.9% dla grupy „Nie” i ~11.6% dla „Tak”, czyli osoby bez wcześniejszych zaległości biorą przeciętnie nieco większe pożyczki w stosunku do dochodu.
-Jednocześnie rozkłady silnie się pokrywają i obie mają sporo obserwacji w przedziale ~10–30% oraz pojedyncze wartości skrajne powyżej ~50%.
+> Wykres pokazuje rozkład udziału kwoty pożyczki w dochodzie (w %) dla dwóch grup: bez wcześniejszych zaległości („Nie”) i z wcześniejszymi zaległościami („Tak”). Czerwone kropki to trimmed mean - \~14.9% dla grupy „Nie” i \~11.6% dla „Tak”, czyli **osoby bez wcześniejszych zaległości biorą przeciętnie nieco większe pożyczki w stosunku do dochodu.** Jednocześnie rozkłady silnie się pokrywają i obie mają sporo obserwacji w przedziale \~10–30% oraz pojedyncze wartości skrajne powyżej \~50%.
+
+# Podsumowanie i wnioski końcowe
+
+Niniejszy raport poddał analizie zbiór **45 000 wniosków kredytowych.** Przeprowadzony został proces czyszczenia danych, imputacji braków metodą hot-deck oraz weryfikacji statystycznej.
+
+### Jakość danych i czyszczenie
+
+Analiza wykazała obecność **licznych błędów logicznych** w danych surowych (np. wiek 144 lata, staż pracy 125 lat), co wymagało rygorystycznego czyszczenia.
+
+**Rekomendacja:** Dla celów predykcyjnych w przyszłości, zaleca się budowę modelu regresji logistycznej w oparciu o zmienne: procent_dochodu_pozyczka, dochod_roczny oraz wczesniejsze_zaleglosci, gdyż wykazują one najwyższą moc dyskryminacyjną.
+
+## Kluczowe czynniki wpływające na decyzję kredytową
+
+Najsilniejszymi czynnikami różnicującymi grupę pożyczek zatwierdzonych od odrzuconych okazały się wskaźniki ekonomiczne oraz historia kredytowa. Najważniejszym parametrem numerycznym okazała się **relacja pożyczki do dochodu.** Im wyższy udział wnioskowanej kwoty w rocznym dochodzie, tym gwałtowniej spada szansa na akceptację (każdy wzrost o 1 p.p. udziału zmniejsza szanse na pożyczkę o ok. 10%).
+
+Jeżeli chodzi o dochód mediana osób z zatwierdzoną pożyczką (\~73 tys. PLN) jest o niemal 45% wyższa niż w grupie odrzuconej (\~50 tys. PLN), co potwierdził test Kruskala-Wallisa (p \< 0,001). Kolejnym ważnym aspektem okazała się **historia finansowa oraz wiarygodność.** Brak wcześniejszych zaległości płatniczych oraz posiadanie nieruchomości (hipoteka lub własność) istotnie zwiększają prawdopodobieństwo pozytywnej decyzji.
+
+### Cel pożyczki
+
+Przeprowadzona analiza wykazała, że instytucje finansowe wykazują preferencje co do przeznaczenia środków. Najwyższy odsetek akceptacji odnotowano dla pożyczek o charakterze ["inwestycyjnym" (Venture) oraz edukacyjnym.]{.underline} Najtrudniej o finansowanie w przypadku spłaty zadłużenia, remontów i wydatków medycznych.
+
+### Czynniki nieistotne statystycznie
+
+**Wbrew postawionym hipotezom,** pewne cechy profilu klienta nie mają statystycznie istotnego wpływu na status pożyczki, a są nimi:
+
+-   **Płeć i wykształcenie:** Testy chi-kwadrat wykazały brak zależności – proces decyzyjny wydaje się być wolny od uprzedzeń demograficznych w tym zakresie.
+
+-   **Wiek:** W przedziale 18–60 lat trend prawdopodobieństwa akceptacji jest relatywnie płaski. Wiek silnie korluje z długością historii kredytowej, ale sam w sobie nie jest barierą w uzyskaniu finansowania.
+
+## Kryteriów przyznania kredytu
+
+Najważniejsze wnioski, odnośnie kryteriów przyznania kredytu:
+
+-   **Sytuacja finansowa a demografia:** Bank ocenia głównie sytuację finansową. Płeć, wiek czy poziom wykształcenia okazały się praktycznie nieistotne w procesie podejmowania decyzji.
+
+-   **Zdolność do spłaty:** Najważniejszym wskaźnikiem jest to, jaką część zarobków stanowi rata. Im mniejszy jest to procent, tym większa szansa na otrzymanie kredytu.
+
+-   **Dochód:** Osoby, które dostały pożyczkę, zarabiały średnio znacznie więcej (mediana 73 tys. PLN) niż te, których wnioski odrzucono (50 tys. PLN).
+
+-   **Historia i majątek:** Czysta historia kredytowa (brak wcześniejszych zaległości) oraz posiadanie nieruchomości (własność lub hipoteka) stanowia silne fundamenty, do pozytywnej decyzji kredytowej.
+
+-   **Cel pożyczki:** Łatwiej o kredyt na rozwój (edukacja, inwestycje) niż aspekty takie jak spłata starych długów czy remonty.
+
+## Wnioski końcowe
+
+Portfel kredytowy jest zarządzany w oparciu o **racjonalną ocenę zdolności do spłaty i historię kredytową,** przy jednoczesnym zachowaniu **neutralności wobec cech demograficznych** klientów. Kryteria, które mają najwiekszą szanse na powodzenie w otrzymaniu decyzji pozytywnej dotyczącej kredytu to: nieskie obciążenie dochodu, brak zaległości w przeszłości klienta, stabilne oraz wysokie zarobki oraz posiadanie własnego mieszkania/ domu. Czynniki demograficzne oraz wiek kredytobiorcy okazły sie być **mniej istotne.**
