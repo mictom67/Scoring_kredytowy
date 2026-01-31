@@ -217,34 +217,6 @@ barplot(cf2)
 sum(duplicated(dane_imp))
 ```
 
-```{r info co do czyszczenia, eval=FALSE, include=FALSE}
-
-#ten fragment to funkcja „czyszcząca” (preprocessing) — przygotowuje surowy dataframe do dalszej analizy i rysunków. Bez takiego kroku często dostaniesz błędy (np. brakujące funkcje/typy, warningi ggplot o utraconych estetykach, dziwne skale, outliery psujące wykresy) lub otrzymasz mylące wykresy (np. liczba 0/1 traktowana jako liczba, a nie kategoria).
-
-#Co robi ten konkretny kod — krok po kroku i po co:
-
-#clean_names() (janitor) — ujednolica nazwy kolumn (np. usunięcie spacji, zamiana na snake_case). Ułatwia odwoływanie się do kolumn.
-#mutate(...) — sekcja 1 (tekstowe/kategoryczne):
-#person_gender / person_education / person_home_ownership / loan_intent:
-#zamienia NA na "unknown" — dzięki temu kategorie nie znikają i nie powodują błędów przy group/fill,
-#str_trim + str_to_title — ujednolica różne zapisy (np. "male", " Male ", "MALE" → "Male"), co zapobiega rozdrobnieniu kategorii i błędom w tabelkach/wykresach.
-#previous_loan_defaults_on_file:
-#przekodowuje różne formy "yes/no" do 1/0, a potem cast do integer — ułatwia analizę i modelowanie.
-#loan_status = as.integer(loan_status) — upewnia, że target ma poprawny typ (ważne do rysunków i modelowania).
-#mutate(...) — sekcja 2 (numeryczne i walidacja):
-#person_age: wartości <18 lub >100 → NA (filtruje błędne dane).
-#person_emp_exp: wartości ujemne, >50 lub większe niż (wiek - 18) → NA (logika: nie można mieć > wiek-18).
-#person_income, loan_amnt, loan_int_rate, loan_percent_income, cb_person_cred_hist_length:
-#wartości nielogiczne (ujemne, oprocentowanie poza 0-100, długość historii większa niż wiek-18) → NA.
-#Zwraca dataframe z oczyszczonymi kolumnami.
-#Dlaczego to jest potrzebne do wykresów:
-
-#Typy: ggplot i funkcje statystyczne oczekują poprawnych typów (faktor vs numeric). Jeśli loan_status jest liczbą 0/1, ggplot może zgubić fill (grupowanie) — dlatego warto jawnie zrobić factor() albo przygotować kolumnę.
-#Outliery i nielogiczne wartości: duże wartości (np. 7 200 000) lub 144 lata zafałszują skale wykresów i ukryją „normalne” wartości. Czyszczenie poprawia czytelność.
-#Braki danych (NA) kontrolowane: jeśli zostawisz absurdalne wartości zamiast NA, imputacja/modelowanie/wykresy będą błędne.
-#Standaryzacja kategorii: ułatwia porównania i estetykę legend.
-```
-
 ```{r wykresy-czyszczenie-Paweł, include=FALSE}
 clean_basic <- function(df) {
   df <- df %>%
